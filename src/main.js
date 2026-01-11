@@ -29,11 +29,11 @@ class App {
 
   initCamera() {
     const aspect = window.innerWidth / window.innerHeight
-    this.camera = new THREE.PerspectiveCamera(40, aspect, 0.01, 100)
+    this.camera = new THREE.PerspectiveCamera(35, aspect, 0.01, 100)
     
-    // Position camera for an appealing product shot angle
-    this.camera.position.set(0.15, 0.35, 0.55)
-    this.camera.lookAt(0, 0.02, 0)
+    // Position camera for front-facing slightly elevated view (like reference)
+    this.camera.position.set(0, 0.18, 0.45)
+    this.camera.lookAt(0, 0.01, 0)
   }
 
   initRenderer() {

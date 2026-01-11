@@ -17,148 +17,187 @@ export class Key {
   }
 
   createKeycap() {
-    const keyWidth = this.width * KEY_UNIT - KEY_GAP * 0.6
-    const keyDepth = KEY_UNIT - KEY_GAP * 0.6
-    const keyHeight = 0.009
-    const topInset = 0.002 // How much smaller the top is
+    const keyWidth = this.width * KEY_UNIT - KEY_GAP
+    const keyDepth = KEY_UNIT - KEY_GAP
     
-    // Get color from COLORS object
+    // HIGH PROFILE keycap dimensions (like Cherry/OEM profile)
+    const keyHeight = 0.010  // 10mm tall keycap
+    const topInset = 0.0015  // Top is smaller than bottom
+    const dishDepth = 0.001  // Concave dish on top
+    
+    // Get color
     const baseColor = COLORS[this.colorName] || COLORS.darkGrey
     
-    // Create keycap body using custom geometry for Cherry MX-like profile
-    const geometry = this.createCherryProfileGeometry(keyWidth, keyHeight, keyDepth, topInset)
+    // Create the keycap body with proper height
+    this.createKeycapBody(keyWidth, keyHeight, keyDepth, topInset, baseColor)
     
-    // Create material with PBT-like appearance
+    // Create the dished top surface
+    this.createDishTop(keyWidth, keyDepth, keyHeight, topInset, dishDepth, baseColor)
+    
+    // Create legend
+    if (this.label) {
+      this.createLegend(keyWidth, keyDepth, keyHeight)
+    }
+    
+    // Position the key group
+    const xPos = (this.x + this.width / 2) * KEY_UNIT
+    const zPos = this.y * KEY_UNIT
+    this.group.position.set(xPos, 0, zPos)
+    
+    this.mesh = this.group
+  }
+
+  createKeycapBody(width, height, depth, topInset, color) {
+    // Create a tapered box for the keycap body
+    // Bottom face is larger, top face is smaller (like a real keycap)
+    
+    const geometry = new THREE.BufferGeometry()
+    
+    const hw = width / 2
+    const hd = depth / 2
+    const ti = topInset  // How much smaller the top is on each side
+    
+    // 8 vertices: 4 bottom, 4 top (tapered inward)
+    const vertices = new Float32Array([
+      // Bottom face (y=0)
+      -hw, 0, -hd,      // 0: back-left
+       hw, 0, -hd,      // 1: back-right
+       hw, 0,  hd,      // 2: front-right
+      -hw, 0,  hd,      // 3: front-left
+      // Top face (y=height, smaller)
+      -hw + ti, height, -hd + ti,  // 4: back-left
+       hw - ti, height, -hd + ti,  // 5: back-right
+       hw - ti, height,  hd - ti,  // 6: front-right
+      -hw + ti, height,  hd - ti,  // 7: front-left
+    ])
+    
+    // Indices for faces (triangles)
+    const indices = [
+      // Bottom face
+      0, 2, 1,  0, 3, 2,
+      // Top face
+      4, 5, 6,  4, 6, 7,
+      // Front face
+      3, 7, 6,  3, 6, 2,
+      // Back face
+      0, 1, 5,  0, 5, 4,
+      // Left face
+      0, 4, 7,  0, 7, 3,
+      // Right face
+      1, 2, 6,  1, 6, 5,
+    ]
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+    
     const material = new THREE.MeshPhysicalMaterial({
-      color: baseColor,
-      roughness: 0.75,
+      color: color,
+      roughness: 0.7,
       metalness: 0.0,
-      clearcoat: 0.05,
-      clearcoatRoughness: 0.8,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.6,
     })
     
     const keycap = new THREE.Mesh(geometry, material)
     keycap.castShadow = true
     keycap.receiveShadow = true
+    this.keycapMesh = keycap
     this.group.add(keycap)
-    
-    // Add top face dish (slight concave depression)
-    this.createTopDish(keyWidth, keyDepth, keyHeight, baseColor)
-    
-    // Add key legend
-    if (this.label) {
-      this.createLegend(keyWidth, keyDepth, keyHeight, baseColor)
-    }
-    
-    // Position the key
-    const xPos = (this.x + this.width / 2) * (KEY_UNIT + KEY_GAP * 0.1)
-    const zPos = this.y * (KEY_UNIT + KEY_GAP * 0.1)
-    
-    this.group.position.set(xPos, keyHeight / 2 + 0.018, zPos)
-    
-    // Store reference to this Key object
-    this.group.userData.key = this
-    this.mesh = this.group // For compatibility
   }
 
-  createCherryProfileGeometry(width, height, depth, topInset) {
-    // Create a geometry with tapered sides like a real keycap
-    const shape = new THREE.Shape()
+  createDishTop(width, depth, height, topInset, dishDepth, color) {
+    // Create a slightly concave (dished) top surface
+    const dishWidth = width - topInset * 2 - 0.001
+    const dishDepth2 = depth - topInset * 2 - 0.001
     
-    const hw = width / 2
-    const hd = depth / 2
-    const r = 0.002 // Corner radius for bottom
+    // Simple dish using a slightly curved plane
+    const dishGeometry = new THREE.PlaneGeometry(dishWidth, dishDepth2, 4, 4)
     
-    // Bottom rectangle with rounded corners
-    shape.moveTo(-hw + r, -hd)
-    shape.lineTo(hw - r, -hd)
-    shape.quadraticCurveTo(hw, -hd, hw, -hd + r)
-    shape.lineTo(hw, hd - r)
-    shape.quadraticCurveTo(hw, hd, hw - r, hd)
-    shape.lineTo(-hw + r, hd)
-    shape.quadraticCurveTo(-hw, hd, -hw, hd - r)
-    shape.lineTo(-hw, -hd + r)
-    shape.quadraticCurveTo(-hw, -hd, -hw + r, -hd)
-    
-    // Extrude with bevel for smooth edges
-    const extrudeSettings = {
-      depth: height,
-      bevelEnabled: true,
-      bevelThickness: 0.001,
-      bevelSize: topInset,
-      bevelOffset: 0,
-      bevelSegments: 2,
+    // Create slight dish (curve vertices down in center)
+    const positions = dishGeometry.attributes.position
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i)
+      const y = positions.getY(i)
+      // Parabolic dish
+      const distFromCenter = Math.sqrt(x * x + y * y)
+      const maxDist = Math.sqrt((dishWidth/2)**2 + (dishDepth2/2)**2)
+      const dishAmount = dishDepth * (1 - (distFromCenter / maxDist) ** 2)
+      positions.setZ(i, -dishAmount)
     }
+    dishGeometry.computeVertexNormals()
     
-    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings)
-    geometry.rotateX(-Math.PI / 2)
-    geometry.translate(0, height / 2, 0)
-    
-    return geometry
-  }
-
-  createTopDish(width, depth, height, baseColor) {
-    // Create a subtle dish/indent on top of keycap
-    const dishGeometry = new THREE.PlaneGeometry(width * 0.75, depth * 0.75)
     const dishMaterial = new THREE.MeshPhysicalMaterial({
-      color: baseColor,
-      roughness: 0.6,
+      color: color,
+      roughness: 0.65,
       metalness: 0.0,
-      transparent: true,
-      opacity: 0.0, // Invisible, just for subtle shadow catching
     })
     
     const dish = new THREE.Mesh(dishGeometry, dishMaterial)
     dish.rotation.x = -Math.PI / 2
-    dish.position.y = height + 0.0005
+    dish.position.y = height - 0.0001
     dish.receiveShadow = true
     this.group.add(dish)
   }
 
-  createLegend(width, depth, height, baseColor) {
-    // Create canvas texture for key legend
+  createLegend(width, depth, height) {
+    // Create canvas for legend text
     const canvas = document.createElement('canvas')
-    const size = 128
+    const size = 256
     canvas.width = size
     canvas.height = size
     const ctx = canvas.getContext('2d')
     
-    // Transparent background
+    // Clear with transparency
     ctx.clearRect(0, 0, size, size)
     
     // Determine text color based on key color
-    const isLightKey = this.colorName === 'lightGrey' || this.colorName === 'keyboardCase'
-    const textColor = isLightKey ? '#333333' : '#ffffff'
+    const isLightKey = this.colorName === 'lightGrey'
+    const textColor = isLightKey ? '#2a2a2a' : '#ffffff'
     
-    // Draw legend text
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
-    // Adjust font size based on label length
-    let fontSize = 42
-    if (this.label.length > 3) fontSize = 28
-    if (this.label.length > 5) fontSize = 20
+    // Calculate font size based on label length
+    let fontSize = 72
+    if (this.label.length === 1) {
+      fontSize = 90
+    } else if (this.label.length === 2) {
+      fontSize = 70
+    } else if (this.label.length <= 4) {
+      fontSize = 50
+    } else {
+      fontSize = 36
+    }
     
     ctx.font = `bold ${fontSize}px "SF Pro Display", "Helvetica Neue", Arial, sans-serif`
+    
+    // Draw main label centered
     ctx.fillText(this.label, size / 2, size / 2)
     
-    // Create texture from canvas
+    // Create texture
     const texture = new THREE.CanvasTexture(canvas)
     texture.anisotropy = 16
+    texture.minFilter = THREE.LinearMipmapLinearFilter
+    texture.magFilter = THREE.LinearFilter
     
-    // Create legend plane
-    const legendSize = Math.min(width, depth) * 0.7
-    const legendGeometry = new THREE.PlaneGeometry(legendSize, legendSize)
+    // Create legend plane - sized to fit on keycap top
+    const legendWidth = (width - 0.004) * 0.85
+    const legendDepth = (depth - 0.004) * 0.85
+    const legendGeometry = new THREE.PlaneGeometry(legendWidth, legendDepth)
+    
     const legendMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
       depthWrite: false,
+      side: THREE.DoubleSide,
     })
     
     const legend = new THREE.Mesh(legendGeometry, legendMaterial)
     legend.rotation.x = -Math.PI / 2
-    legend.position.y = height + 0.001
+    legend.position.y = height + 0.0002
+    this.legendMesh = legend
     this.group.add(legend)
   }
 
@@ -167,12 +206,9 @@ export class Key {
     this.isPressed = true
     this.targetY = this.originalY - 0.003
     
-    // Change emissive for glow effect
-    this.group.children.forEach(child => {
-      if (child.material && child.material.emissive) {
-        child.material.emissive = new THREE.Color(0x111111)
-      }
-    })
+    if (this.keycapMesh && this.keycapMesh.material) {
+      this.keycapMesh.material.emissive = new THREE.Color(0x111111)
+    }
   }
 
   release() {
@@ -180,11 +216,9 @@ export class Key {
     this.isPressed = false
     this.targetY = this.originalY
     
-    this.group.children.forEach(child => {
-      if (child.material && child.material.emissive) {
-        child.material.emissive = new THREE.Color(0x000000)
-      }
-    })
+    if (this.keycapMesh && this.keycapMesh.material) {
+      this.keycapMesh.material.emissive = new THREE.Color(0x000000)
+    }
   }
 
   update(deltaTime) {

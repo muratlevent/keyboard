@@ -2,22 +2,21 @@
 // Based on reference image with dark grey main keys and light grey modifiers
 
 export const COLORS = {
-  darkGrey: 0x505050,      // Main alphanumeric keys
-  lightGrey: 0xe0e0e0,     // Modifier keys (Shift, Ctrl, etc.)
-  escBlack: 0x2d2d2d,      // Escape key
-  enterDark: 0x3d3d3d,     // Enter key
-  keyboardCase: 0xc5c5c5,  // Aluminum case color (silver-white)
-  caseDark: 0x252525,      // Case plate (dark gunmetal)
+  darkGrey: 0x4d4d4d,      // Main alphanumeric keys
+  lightGrey: 0xe5e5e5,     // Modifier keys (Shift, Ctrl, etc.)
+  escBlack: 0x1a1a1a,      // Escape key (black)
+  enterDark: 0x1a1a1a,     // Enter key (black)
+  keyboardCase: 0xd0d0d0,  // Aluminum case color (silver-white)
+  caseDark: 0x2a2a2a,      // Case plate (dark)
 }
 
-// Key sizes in units (1 unit = standard key width)
-export const KEY_UNIT = 0.019  // 19mm per unit in meters
-export const KEY_GAP = 0.001   // 1mm gap
+// Key sizes in units (1 unit = standard key width ~19.05mm)
+export const KEY_UNIT = 0.019  // 19mm per unit
+export const KEY_GAP = 0.0015  // 1.5mm gap between keys
 
-// Key definitions: [keyCode, label, width, x, y, color]
-// x and y are in units from top-left
+// Full 65% layout with proper labels
 export const KEYBOARD_LAYOUT = [
-  // Row 0 - Number row
+  // Row 0 - Number row (Esc, 1-9, 0, -, =, Backspace, Home)
   { code: 'Escape', label: 'Esc', width: 1, x: 0, y: 0, color: 'escBlack' },
   { code: 'Digit1', label: '1', width: 1, x: 1, y: 0, color: 'darkGrey' },
   { code: 'Digit2', label: '2', width: 1, x: 2, y: 0, color: 'darkGrey' },
@@ -31,7 +30,7 @@ export const KEYBOARD_LAYOUT = [
   { code: 'Digit0', label: '0', width: 1, x: 10, y: 0, color: 'darkGrey' },
   { code: 'Minus', label: '-', width: 1, x: 11, y: 0, color: 'darkGrey' },
   { code: 'Equal', label: '=', width: 1, x: 12, y: 0, color: 'darkGrey' },
-  { code: 'Backspace', label: '←', width: 2, x: 13, y: 0, color: 'lightGrey' },
+  { code: 'Backspace', label: '⌫', width: 2, x: 13, y: 0, color: 'lightGrey' },
   { code: 'Home', label: 'Home', width: 1, x: 15, y: 0, color: 'lightGrey' },
 
   // Row 1 - QWERTY row
@@ -48,7 +47,7 @@ export const KEYBOARD_LAYOUT = [
   { code: 'KeyP', label: 'P', width: 1, x: 10.5, y: 1, color: 'darkGrey' },
   { code: 'BracketLeft', label: '[', width: 1, x: 11.5, y: 1, color: 'darkGrey' },
   { code: 'BracketRight', label: ']', width: 1, x: 12.5, y: 1, color: 'darkGrey' },
-  { code: 'Backslash', label: '\\', width: 1.5, x: 13.5, y: 1, color: 'lightGrey' },
+  { code: 'Backslash', label: '\\', width: 1.5, x: 13.5, y: 1, color: 'darkGrey' },
   { code: 'PageUp', label: 'PgUp', width: 1, x: 15, y: 1, color: 'lightGrey' },
 
   // Row 2 - Home row
@@ -85,19 +84,17 @@ export const KEYBOARD_LAYOUT = [
 
   // Row 4 - Bottom row
   { code: 'ControlLeft', label: 'Ctrl', width: 1.25, x: 0, y: 4, color: 'lightGrey' },
-  { code: 'MetaLeft', label: '⌘', width: 1.25, x: 1.25, y: 4, color: 'lightGrey' },
+  { code: 'MetaLeft', label: 'Super', width: 1.25, x: 1.25, y: 4, color: 'lightGrey' },
   { code: 'AltLeft', label: 'Alt', width: 1.25, x: 2.5, y: 4, color: 'lightGrey' },
   { code: 'Space', label: '', width: 6.25, x: 3.75, y: 4, color: 'lightGrey' },
   { code: 'AltRight', label: 'Alt', width: 1, x: 10, y: 4, color: 'lightGrey' },
-  { code: 'Fn', label: 'Fn', width: 1, x: 11, y: 4, color: 'lightGrey' },
-  { code: 'ControlRight', label: 'Ctrl', width: 1, x: 12, y: 4, color: 'lightGrey' },
+  { code: 'MetaRight', label: 'Super', width: 1, x: 11, y: 4, color: 'lightGrey' },
+  { code: 'Fn', label: 'Fn', width: 1, x: 12, y: 4, color: 'lightGrey' },
   { code: 'ArrowLeft', label: '←', width: 1, x: 13, y: 4, color: 'lightGrey' },
   { code: 'ArrowDown', label: '↓', width: 1, x: 14, y: 4, color: 'lightGrey' },
   { code: 'ArrowRight', label: '→', width: 1, x: 15, y: 4, color: 'lightGrey' },
 ]
 
-// Keyboard dimensions
-export const KEYBOARD_WIDTH = 16 * KEY_UNIT + 15 * KEY_GAP  // 16 keys wide
-export const KEYBOARD_HEIGHT = 5 * KEY_UNIT + 4 * KEY_GAP   // 5 rows
-export const CASE_PADDING = 0.008  // Extra padding around keys
-export const CASE_HEIGHT = 0.012   // Case thickness
+// Keyboard dimensions (16 units wide, 5 rows)
+export const KEYBOARD_WIDTH = 16 * KEY_UNIT
+export const KEYBOARD_HEIGHT = 5 * KEY_UNIT

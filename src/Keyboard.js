@@ -7,8 +7,6 @@ import {
   KEY_GAP,
   KEYBOARD_WIDTH,
   KEYBOARD_HEIGHT,
-  CASE_PADDING,
-  CASE_HEIGHT
 } from './KeyboardLayout.js'
 
 export class Keyboard {
@@ -16,44 +14,78 @@ export class Keyboard {
     this.group = new THREE.Group()
     this.keys = new Map()
     
+    // Case dimensions - keys sit INSIDE the case
+    this.caseWallThickness = 0.006  // 6mm walls
+    this.caseBaseHeight = 0.008    // 8mm base
+    this.caseWallHeight = 0.012    // 12mm wall height above base
+    this.plateHeight = 0.003       // 3mm plate
+    
     this.createCase()
+    this.createPlate()
     this.createKeys()
     
     // Center the keyboard
-    this.group.position.x = -KEYBOARD_WIDTH / 2 + 0.05
+    this.group.position.x = -KEYBOARD_WIDTH / 2
     this.group.position.z = -KEYBOARD_HEIGHT / 2
   }
 
   createCase() {
-    const caseWidth = KEYBOARD_WIDTH + CASE_PADDING * 2.5
-    const caseDepth = KEYBOARD_HEIGHT + CASE_PADDING * 2.5
-    const caseHeight = CASE_HEIGHT
-    const bevelRadius = 0.008
+    const innerWidth = KEYBOARD_WIDTH
+    const innerDepth = KEYBOARD_HEIGHT
+    const wall = this.caseWallThickness
+    const baseHeight = this.caseBaseHeight
+    const wallHeight = this.caseWallHeight
     
-    // Main case body - extruded rounded rectangle
-    const caseShape = new THREE.Shape()
-    const hw = caseWidth / 2
-    const hd = caseDepth / 2
+    const outerWidth = innerWidth + wall * 2
+    const outerDepth = innerDepth + wall * 2
+    const totalHeight = baseHeight + wallHeight
     
-    caseShape.moveTo(-hw + bevelRadius, -hd)
-    caseShape.lineTo(hw - bevelRadius, -hd)
-    caseShape.quadraticCurveTo(hw, -hd, hw, -hd + bevelRadius)
-    caseShape.lineTo(hw, hd - bevelRadius)
-    caseShape.quadraticCurveTo(hw, hd, hw - bevelRadius, hd)
-    caseShape.lineTo(-hw + bevelRadius, hd)
-    caseShape.quadraticCurveTo(-hw, hd, -hw, hd - bevelRadius)
-    caseShape.lineTo(-hw, -hd + bevelRadius)
-    caseShape.quadraticCurveTo(-hw, -hd, -hw + bevelRadius, -hd)
+    // Create case as a hollow box (outer - inner)
+    // Using separate meshes for better materials
+    
+    // Outer shell
+    const outerShape = new THREE.Shape()
+    const bevel = 0.004  // Corner radius
+    
+    outerShape.moveTo(bevel, 0)
+    outerShape.lineTo(outerWidth - bevel, 0)
+    outerShape.quadraticCurveTo(outerWidth, 0, outerWidth, bevel)
+    outerShape.lineTo(outerWidth, outerDepth - bevel)
+    outerShape.quadraticCurveTo(outerWidth, outerDepth, outerWidth - bevel, outerDepth)
+    outerShape.lineTo(bevel, outerDepth)
+    outerShape.quadraticCurveTo(0, outerDepth, 0, outerDepth - bevel)
+    outerShape.lineTo(0, bevel)
+    outerShape.quadraticCurveTo(0, 0, bevel, 0)
+    
+    // Inner cutout (hole for keys)
+    const holePath = new THREE.Path()
+    const holeX = wall
+    const holeZ = wall
+    const holeW = innerWidth
+    const holeD = innerDepth
+    const holeR = 0.002
+    
+    holePath.moveTo(holeX + holeR, holeZ)
+    holePath.lineTo(holeX + holeW - holeR, holeZ)
+    holePath.quadraticCurveTo(holeX + holeW, holeZ, holeX + holeW, holeZ + holeR)
+    holePath.lineTo(holeX + holeW, holeZ + holeD - holeR)
+    holePath.quadraticCurveTo(holeX + holeW, holeZ + holeD, holeX + holeW - holeR, holeZ + holeD)
+    holePath.lineTo(holeX + holeR, holeZ + holeD)
+    holePath.quadraticCurveTo(holeX, holeZ + holeD, holeX, holeZ + holeD - holeR)
+    holePath.lineTo(holeX, holeZ + holeR)
+    holePath.quadraticCurveTo(holeX, holeZ, holeX + holeR, holeZ)
+    
+    outerShape.holes.push(holePath)
     
     const extrudeSettings = {
-      depth: caseHeight,
+      depth: totalHeight,
       bevelEnabled: true,
-      bevelThickness: 0.003,
-      bevelSize: 0.003,
-      bevelSegments: 4,
+      bevelThickness: 0.002,
+      bevelSize: 0.002,
+      bevelSegments: 3,
     }
     
-    const caseGeometry = new THREE.ExtrudeGeometry(caseShape, extrudeSettings)
+    const caseGeometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings)
     caseGeometry.rotateX(-Math.PI / 2)
     
     // Premium aluminum material
@@ -61,108 +93,60 @@ export class Keyboard {
       color: COLORS.keyboardCase,
       roughness: 0.25,
       metalness: 0.9,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.2,
+      clearcoat: 0.4,
+      clearcoatRoughness: 0.15,
     })
     
     const caseMesh = new THREE.Mesh(caseGeometry, caseMaterial)
-    caseMesh.position.set(
-      KEYBOARD_WIDTH / 2 - 0.05,
-      0,
-      KEYBOARD_HEIGHT / 2
-    )
-    caseMesh.receiveShadow = true
+    caseMesh.position.set(-wall, 0, -wall)
     caseMesh.castShadow = true
+    caseMesh.receiveShadow = true
     this.group.add(caseMesh)
     
-    // Top plate (dark metal mounting plate)
-    const plateWidth = caseWidth - 0.012
-    const plateDepth = caseDepth - 0.012
+    // Add bottom panel
+    const bottomGeometry = new THREE.BoxGeometry(outerWidth, baseHeight, outerDepth)
+    const bottomMesh = new THREE.Mesh(bottomGeometry, caseMaterial.clone())
+    bottomMesh.position.set(
+      innerWidth / 2,
+      baseHeight / 2,
+      innerDepth / 2
+    )
+    bottomMesh.receiveShadow = true
+    this.group.add(bottomMesh)
+  }
+
+  createPlate() {
+    // Dark metal plate where keys mount
+    const plateWidth = KEYBOARD_WIDTH - 0.002
+    const plateDepth = KEYBOARD_HEIGHT - 0.002
+    const plateHeight = this.plateHeight
     
-    const plateShape = new THREE.Shape()
-    const phw = plateWidth / 2
-    const phd = plateDepth / 2
-    const pr = 0.005
-    
-    plateShape.moveTo(-phw + pr, -phd)
-    plateShape.lineTo(phw - pr, -phd)
-    plateShape.quadraticCurveTo(phw, -phd, phw, -phd + pr)
-    plateShape.lineTo(phw, phd - pr)
-    plateShape.quadraticCurveTo(phw, phd, phw - pr, phd)
-    plateShape.lineTo(-phw + pr, phd)
-    plateShape.quadraticCurveTo(-phw, phd, -phw, phd - pr)
-    plateShape.lineTo(-phw, -phd + pr)
-    plateShape.quadraticCurveTo(-phw, -phd, -phw + pr, -phd)
-    
-    const plateExtrudeSettings = {
-      depth: 0.004,
-      bevelEnabled: true,
-      bevelThickness: 0.001,
-      bevelSize: 0.001,
-      bevelSegments: 2,
-    }
-    
-    const plateGeometry = new THREE.ExtrudeGeometry(plateShape, plateExtrudeSettings)
-    plateGeometry.rotateX(-Math.PI / 2)
-    
+    const plateGeometry = new THREE.BoxGeometry(plateWidth, plateHeight, plateDepth)
     const plateMaterial = new THREE.MeshPhysicalMaterial({
       color: COLORS.caseDark,
-      roughness: 0.35,
-      metalness: 0.85,
+      roughness: 0.4,
+      metalness: 0.8,
     })
     
-    const plateMesh = new THREE.Mesh(plateGeometry, plateMaterial)
-    plateMesh.position.set(
-      KEYBOARD_WIDTH / 2 - 0.05,
-      caseHeight + 0.003,
+    const plate = new THREE.Mesh(plateGeometry, plateMaterial)
+    plate.position.set(
+      KEYBOARD_WIDTH / 2,
+      this.caseBaseHeight + plateHeight / 2,
       KEYBOARD_HEIGHT / 2
     )
-    plateMesh.receiveShadow = true
-    this.group.add(plateMesh)
-    
-    // Add subtle chamfer highlight on case edge
-    const edgeGeometry = new THREE.RingGeometry(
-      Math.min(hw, hd) - 0.002,
-      Math.min(hw, hd),
-      32
-    )
-    const edgeMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      roughness: 0.1,
-      metalness: 1.0,
-      transparent: true,
-      opacity: 0.15,
-    })
-    
-    // Front edge accent strip
-    const accentGeometry = new THREE.BoxGeometry(caseWidth - 0.01, 0.001, 0.002)
-    const accentMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      roughness: 0.1,
-      metalness: 1.0,
-      transparent: true,
-      opacity: 0.25,
-    })
-    
-    const accentMesh = new THREE.Mesh(accentGeometry, accentMaterial)
-    accentMesh.position.set(
-      KEYBOARD_WIDTH / 2 - 0.05,
-      caseHeight / 2,
-      KEYBOARD_HEIGHT / 2 + caseDepth / 2 + 0.002
-    )
-    this.group.add(accentMesh)
+    plate.receiveShadow = true
+    this.group.add(plate)
   }
 
   createKeys() {
+    // Keys sit on top of the plate
+    const keyBaseY = this.caseBaseHeight + this.plateHeight
+    
     KEYBOARD_LAYOUT.forEach(keyData => {
       const key = new Key(keyData)
       
-      // Position keys to sit on the plate
-      const plateTop = CASE_HEIGHT + 0.007 // Top of plate
-      
-      key.group.position.x += CASE_PADDING
-      key.group.position.y = plateTop
-      key.group.position.z += CASE_PADDING
+      // Position key on the plate
+      key.group.position.y = keyBaseY
       
       // Update original Y for animation
       key.originalY = key.group.position.y
