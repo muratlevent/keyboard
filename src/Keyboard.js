@@ -14,44 +14,43 @@ export class Keyboard {
     this.keys = new Map()
     
     // Case dimensions
-    this.casePadding = 0.008     // Padding around keys
-    this.caseBaseHeight = 0.012  // Height of case base
-    this.plateHeight = 0.002     // Height of the mounting plate
-    this.wallHeight = 0.012      // Walls extend above base
+    this.casePadding = 0.006       // Padding around keys
+    this.caseBaseHeight = 0.014    // Height of case base
+    this.plateHeight = 0.002       // Height of the mounting plate
+    this.wallHeight = 0.006        // Walls extend above base
+    this.sidePanelThickness = 0.003 // Thin side panels
+    
+    // Total keyboard depth (Z axis) and width (X axis)
+    this.totalDepth = KEYBOARD_HEIGHT + this.casePadding * 2
+    this.totalWidth = KEYBOARD_WIDTH + this.casePadding * 2
     
     this.createCaseBase()
-    this.createCaseWalls()
+    this.createWedgeSidePanels()
+    this.createFrontBackWalls()
     this.createPlate()
     this.createKeys()
     
     // Center the keyboard
-    this.group.position.x = -KEYBOARD_WIDTH / 2 - this.casePadding
+    this.group.position.x = -KEYBOARD_WIDTH / 2 - this.casePadding - this.sidePanelThickness
     this.group.position.z = -KEYBOARD_HEIGHT / 2 - this.casePadding
   }
 
   createCaseBase() {
-    // Halo style: Thick bottom base with "ribbed" texture
-    const width = KEYBOARD_WIDTH + this.casePadding * 2
-    const depth = KEYBOARD_HEIGHT + this.casePadding * 2
-    const height = 0.012
+    // Main case body
+    const width = this.totalWidth
+    const depth = this.totalDepth
+    const height = this.caseBaseHeight
     
-    // Create ribbed texture for the sides
+    // Create ribbed texture for the front/back
     const texture = this.createRibbedTexture()
     
     const geometry = new THREE.BoxGeometry(width, height, depth)
-    
-    // Material 0: Right (Ribbed)
-    // Material 1: Left (Ribbed)
-    // Material 2: Top (Smooth/Covered)
-    // Material 3: Bottom (Smooth)
-    // Material 4: Front (Ribbed)
-    // Material 5: Back (Ribbed)
     
     const baseMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       roughness: 0.2,
       metalness: 0.1,
-      transmission: 0.1, // Slight translucency for "Halo" effect
+      transmission: 0.1,
       thickness: 0.02,
     })
     
@@ -60,12 +59,12 @@ export class Keyboard {
       roughness: 0.3,
       metalness: 0.1,
       bumpMap: texture,
-      bumpScale: 0.002, // Deep ribs
+      bumpScale: 0.002,
     })
 
     const materials = [
-      ribbedMaterial, // Right
-      ribbedMaterial, // Left
+      baseMaterial,   // Right
+      baseMaterial,   // Left
       baseMaterial,   // Top
       baseMaterial,   // Bottom
       ribbedMaterial, // Front
@@ -73,7 +72,7 @@ export class Keyboard {
     ]
     
     const base = new THREE.Mesh(geometry, materials)
-    base.position.set(width / 2, height / 2, depth / 2)
+    base.position.set(this.sidePanelThickness + width / 2, height / 2, depth / 2)
     base.castShadow = true
     base.receiveShadow = true
     this.group.add(base)
@@ -85,19 +84,15 @@ export class Keyboard {
     canvas.height = 512
     const ctx = canvas.getContext('2d')
     
-    // White background
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, 64, 512)
     
-    // Draw dark stripes for grooves (bump map: dark = low)
     ctx.fillStyle = '#000000'
     const numRibs = 40
     const ribHeight = 512 / numRibs
     
     for (let i = 0; i < numRibs; i++) {
-        // Draw separate lines
         if (i % 2 === 0) {
-           // Gradient for smooth groove
            const gradient = ctx.createLinearGradient(0, i * ribHeight, 0, (i + 1) * ribHeight)
            gradient.addColorStop(0, '#ffffff')
            gradient.addColorStop(0.5, '#404040') 
@@ -113,60 +108,128 @@ export class Keyboard {
     return texture
   }
 
-  createCaseWalls() {
-    // Create 4 walls around the keyboard (on TOP of the base, surrounding keys)
-    const width = KEYBOARD_WIDTH + this.casePadding * 2
-    const depth = KEYBOARD_HEIGHT + this.casePadding * 2
-    const wallHeight = this.wallHeight  // Walls as tall as keycaps
-    const wallThickness = 0.006
+  createWedgeSidePanels() {
+    // Create WEDGE-shaped side panels
+    // Profile when viewed from the SIDE (looking along X axis):
+    // - Tall at BACK (low Z, near function row)
+    // - Slopes down toward FRONT (high Z, near spacebar)
+    // - Chamfered bottom-front corner
     
-    const wallMaterial = new THREE.MeshStandardMaterial({
-      color: COLORS.keyboardCase, // Solid White
-      roughness: 0.1, // Smooth plastic
-      metalness: 0.05, // Almost no metal
+    const depth = this.totalDepth
+    const backHeight = this.caseBaseHeight + this.wallHeight + 0.004  // Taller at back
+    const frontHeight = this.caseBaseHeight + this.wallHeight - 0.002 // Shorter at front
+    const chamferSize = 0.008  // Size of bottom-front chamfer
+    
+    // Create the wedge profile shape (viewed from side, XZ plane becomes the profile)
+    // Z runs from 0 (back) to depth (front)
+    // Y is height
+    const createWedgeGeometry = () => {
+      const shape = new THREE.Shape()
+      
+      // Local X=0 maps to World Z=depth (FRONT)
+      // Local X=depth maps to World Z=0 (BACK)
+      
+      // Start at FRONT-BOTTOM (Local X=0, Y=0)
+      shape.moveTo(chamferSize, 0)                 // Front-bottom (after chamfer)
+      shape.lineTo(0, chamferSize)                 // Chamfer up
+      shape.lineTo(0, frontHeight)                 // Front-top (short)
+      
+      // Slope up to BACK-TOP
+      shape.lineTo(depth, backHeight)              // Back-top (tall)
+      
+      // Finish BACK edge
+      shape.lineTo(depth, 0)                       // Back-bottom
+      shape.lineTo(chamferSize, 0)                 // Close at front-bottom
+      
+      const extrudeSettings = {
+        depth: this.sidePanelThickness,
+        bevelEnabled: true,
+        bevelThickness: 0.0005,
+        bevelSize: 0.0005,
+        bevelSegments: 2,
+      }
+      
+      return new THREE.ExtrudeGeometry(shape, extrudeSettings)
+    }
+    
+    const sideMaterial = new THREE.MeshPhysicalMaterial({
+      color: COLORS.keyboardCase,
+      roughness: 0.15,
+      metalness: 0.05,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.2,
     })
     
-    // Front wall (near camera)
+    // Left side panel
+    const leftGeometry = createWedgeGeometry()
+    const leftPanel = new THREE.Mesh(leftGeometry, sideMaterial)
+    // Profile in XY is ZY in world space after rotation. 
+    // Extrude depth is Local Z, which becomes World X.
+    // rotation.y = PI/2 means: World X = Local Z, World Z = -Local X.
+    leftPanel.rotation.y = Math.PI / 2
+    // Local X is [0, depth]. After rotation Z becomes [-depth, 0].
+    // Shift by +depth to bring it to [0, depth].
+    leftPanel.position.set(0, 0, depth)
+    leftPanel.castShadow = true
+    leftPanel.receiveShadow = true
+    this.group.add(leftPanel)
+    
+    // Right side panel
+    const rightGeometry = createWedgeGeometry()
+    const rightPanel = new THREE.Mesh(rightGeometry, sideMaterial)
+    rightPanel.rotation.y = Math.PI / 2
+    // Position at the far right edge
+    const totalWidthWithPanels = this.totalWidth + this.sidePanelThickness * 2
+    rightPanel.position.set(totalWidthWithPanels - this.sidePanelThickness, 0, depth)
+    rightPanel.castShadow = true
+    rightPanel.receiveShadow = true
+    this.group.add(rightPanel)
+  }
+
+  createFrontBackWalls() {
+    // Front and back walls on top of the base
+    const width = this.totalWidth
+    const wallHeight = this.wallHeight
+    const wallThickness = 0.004
+    const depth = this.totalDepth
+    
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      color: COLORS.keyboardCase,
+      roughness: 0.1,
+      metalness: 0.05,
+    })
+    
+    // Front wall (high Z)
     const frontWall = new THREE.Mesh(
       new THREE.BoxGeometry(width, wallHeight, wallThickness),
       wallMaterial
     )
-    frontWall.position.set(width / 2, this.caseBaseHeight + wallHeight / 2, depth - wallThickness / 2)
+    frontWall.position.set(
+      this.sidePanelThickness + width / 2,
+      this.caseBaseHeight + wallHeight / 2,
+      depth - wallThickness / 2
+    )
     frontWall.castShadow = true
     this.group.add(frontWall)
     
-    // Back wall
+    // Back wall (low Z)
     const backWall = new THREE.Mesh(
       new THREE.BoxGeometry(width, wallHeight, wallThickness),
       wallMaterial
     )
-    backWall.position.set(width / 2, this.caseBaseHeight + wallHeight / 2, wallThickness / 2)
+    backWall.position.set(
+      this.sidePanelThickness + width / 2,
+      this.caseBaseHeight + wallHeight / 2,
+      wallThickness / 2
+    )
     backWall.castShadow = true
     this.group.add(backWall)
-    
-    // Left wall
-    const leftWall = new THREE.Mesh(
-      new THREE.BoxGeometry(wallThickness, wallHeight, depth),
-      wallMaterial
-    )
-    leftWall.position.set(wallThickness / 2, this.caseBaseHeight + wallHeight / 2, depth / 2)
-    leftWall.castShadow = true
-    this.group.add(leftWall)
-    
-    // Right wall
-    const rightWall = new THREE.Mesh(
-      new THREE.BoxGeometry(wallThickness, wallHeight, depth),
-      wallMaterial
-    )
-    rightWall.position.set(width - wallThickness / 2, this.caseBaseHeight + wallHeight / 2, depth / 2)
-    rightWall.castShadow = true
-    this.group.add(rightWall)
   }
 
   createPlate() {
     // Dark mounting plate where keys sit
-    const width = KEYBOARD_WIDTH + this.casePadding - 0.004
-    const depth = KEYBOARD_HEIGHT + this.casePadding - 0.004
+    const width = KEYBOARD_WIDTH + this.casePadding - 0.002
+    const depth = KEYBOARD_HEIGHT + this.casePadding - 0.002
     
     const geometry = new THREE.BoxGeometry(width, this.plateHeight, depth)
     const material = new THREE.MeshPhysicalMaterial({
@@ -177,7 +240,7 @@ export class Keyboard {
     
     const plate = new THREE.Mesh(geometry, material)
     plate.position.set(
-      this.casePadding + KEYBOARD_WIDTH / 2,
+      this.sidePanelThickness + this.casePadding + KEYBOARD_WIDTH / 2,
       this.caseBaseHeight + this.plateHeight / 2,
       this.casePadding + KEYBOARD_HEIGHT / 2
     )
@@ -192,8 +255,8 @@ export class Keyboard {
     KEYBOARD_LAYOUT.forEach(keyData => {
       const key = new Key(keyData)
       
-      // Position key - offset by case padding
-      key.group.position.x += this.casePadding
+      // Position key - offset by case padding and side panel
+      key.group.position.x += this.casePadding + this.sidePanelThickness
       key.group.position.y = keyBaseY
       key.group.position.z += this.casePadding
       
@@ -230,3 +293,5 @@ export class Keyboard {
     return this.group
   }
 }
+
+
