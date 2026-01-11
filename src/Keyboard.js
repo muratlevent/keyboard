@@ -30,25 +30,87 @@ export class Keyboard {
   }
 
   createCaseBase() {
-    // Simple box for the case base (bottom part)
+    // Halo style: Thick bottom base with "ribbed" texture
     const width = KEYBOARD_WIDTH + this.casePadding * 2
     const depth = KEYBOARD_HEIGHT + this.casePadding * 2
-    const height = this.caseBaseHeight
+    const height = 0.012
+    
+    // Create ribbed texture for the sides
+    const texture = this.createRibbedTexture()
     
     const geometry = new THREE.BoxGeometry(width, height, depth)
-    const material = new THREE.MeshPhysicalMaterial({
-      color: COLORS.keyboardCase,
-      roughness: 0.25,
-      metalness: 0.85,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.2,
+    
+    // Material 0: Right (Ribbed)
+    // Material 1: Left (Ribbed)
+    // Material 2: Top (Smooth/Covered)
+    // Material 3: Bottom (Smooth)
+    // Material 4: Front (Ribbed)
+    // Material 5: Back (Ribbed)
+    
+    const baseMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      roughness: 0.2,
+      metalness: 0.1,
+      transmission: 0.1, // Slight translucency for "Halo" effect
+      thickness: 0.02,
     })
     
-    const base = new THREE.Mesh(geometry, material)
+    const ribbedMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      roughness: 0.3,
+      metalness: 0.1,
+      bumpMap: texture,
+      bumpScale: 0.002, // Deep ribs
+    })
+
+    const materials = [
+      ribbedMaterial, // Right
+      ribbedMaterial, // Left
+      baseMaterial,   // Top
+      baseMaterial,   // Bottom
+      ribbedMaterial, // Front
+      ribbedMaterial  // Back
+    ]
+    
+    const base = new THREE.Mesh(geometry, materials)
     base.position.set(width / 2, height / 2, depth / 2)
     base.castShadow = true
     base.receiveShadow = true
     this.group.add(base)
+  }
+
+  createRibbedTexture() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    
+    // White background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 64, 512)
+    
+    // Draw dark stripes for grooves (bump map: dark = low)
+    ctx.fillStyle = '#000000'
+    const numRibs = 40
+    const ribHeight = 512 / numRibs
+    
+    for (let i = 0; i < numRibs; i++) {
+        // Draw separate lines
+        if (i % 2 === 0) {
+           // Gradient for smooth groove
+           const gradient = ctx.createLinearGradient(0, i * ribHeight, 0, (i + 1) * ribHeight)
+           gradient.addColorStop(0, '#ffffff')
+           gradient.addColorStop(0.5, '#404040') 
+           gradient.addColorStop(1, '#ffffff')
+           ctx.fillStyle = gradient
+           ctx.fillRect(0, i * ribHeight, 64, ribHeight)
+        }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    return texture
   }
 
   createCaseWalls() {
@@ -58,12 +120,10 @@ export class Keyboard {
     const wallHeight = this.wallHeight  // Walls as tall as keycaps
     const wallThickness = 0.006
     
-    const wallMaterial = new THREE.MeshPhysicalMaterial({
-      color: COLORS.keyboardCase,
-      roughness: 0.25,
-      metalness: 0.85,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.2,
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      color: COLORS.keyboardCase, // Solid White
+      roughness: 0.1, // Smooth plastic
+      metalness: 0.05, // Almost no metal
     })
     
     // Front wall (near camera)

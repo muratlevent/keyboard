@@ -91,8 +91,11 @@ export class Key {
     ctx.fillRect(0, 0, size, size)
     
     // Draw legend text
-    const isLightKey = this.colorName === 'lightGrey'
-    const textColor = isLightKey ? '#222222' : '#eeeeee'
+    // Determine text color based on keycap brightness
+    const darkTextColors = ['alphaKeys', 'modKeys', 'accentYellow']
+    const useDarkText = darkTextColors.includes(this.colorName)
+    
+    const textColor = useDarkText ? '#333333' : '#ffffff'
     
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
