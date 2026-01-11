@@ -151,8 +151,7 @@ class App {
     this.keyboard = new Keyboard()
     this.scene.add(this.keyboard.getMesh())
     
-    // Slight tilt for natural typing angle
-    this.keyboard.group.rotation.x = -0.03
+    // Slight tilt was removed as wedge geometry already provides ergonomic angle
     
     // Input handling
     this.inputHandler = new InputHandler(this.keyboard)
@@ -171,7 +170,7 @@ class App {
     
     const ground = new THREE.Mesh(groundGeometry, groundMaterial)
     ground.rotation.x = -Math.PI / 2
-    ground.position.y = -0.001
+    ground.position.y = 0
     ground.receiveShadow = true
     this.scene.add(ground)
   }
