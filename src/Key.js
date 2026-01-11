@@ -47,7 +47,7 @@ export class Key {
     
     // Position the key group
     const xPos = (this.x + this.width / 2) * KEY_UNIT
-    const zPos = this.y * KEY_UNIT
+    const zPos = (this.y + 0.5) * KEY_UNIT
     this.group.position.set(xPos, 0, zPos)
     
     this.mesh = this.group
