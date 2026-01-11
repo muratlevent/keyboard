@@ -2,13 +2,13 @@
 // Based on NuPhy Halo reference
 
 export const COLORS = {
-  alphaKeys: 0xf4f4f4,     // White/Off-white alphanumeric keys
-  modKeys: 0xc8c8c8,       // Light grey modifiers
-  accentTeal: 0x40e0d0,    // Turquoise/Teal Escape key
-  accentOrange: 0xff6b4a,  // Coral/Orange Enter key
-  accentYellow: 0xffc830,  // Mustard/Yellow Spacebar
-  keyboardCase: 0xffffff,  // White case
-  caseDark: 0xeeeeee,      // Plate (light for this design)
+  alphaKeys: 0xf8f8f8,     // Warm white alphanumeric keys
+  modKeys: 0xb5bac0,       // Light gray modifiers (matching reference)
+  accentTeal: 0x4dd4c4,    // Mint/Teal Escape key
+  accentOrange: 0xe85d4c,  // Coral/Salmon Enter key
+  accentYellow: 0xf5c836,  // Golden Yellow Spacebar
+  keyboardCase: 0xf2f4f6,  // Off-white case
+  caseDark: 0xe5e7ea,      // Light gray plate
 }
 
 // Key sizes in units (1 unit = standard key width ~19.05mm)

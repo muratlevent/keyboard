@@ -1,7 +1,10 @@
+import { getSoundManager } from './SoundManager.js'
+
 export class InputHandler {
   constructor(keyboard) {
     this.keyboard = keyboard
     this.pressedKeys = new Set()
+    this.soundManager = getSoundManager()
     
     this.setupEventListeners()
   }
@@ -27,6 +30,9 @@ export class InputHandler {
     
     this.pressedKeys.add(code)
     this.keyboard.pressKey(code)
+    
+    // Play switch sound
+    this.soundManager.playKeySound()
     
     // Update key indicator
     this.showKeyIndicator(event.key, code)

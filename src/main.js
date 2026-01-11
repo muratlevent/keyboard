@@ -24,7 +24,7 @@ class App {
 
   initScene() {
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x0d0d0d)
+    this.scene.background = new THREE.Color(0xf0f2f5)  // Light gray background
   }
 
   initCamera() {
@@ -162,11 +162,11 @@ class App {
     // Subtle reflective surface under keyboard
     const groundGeometry = new THREE.PlaneGeometry(3, 3)
     const groundMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x0a0a0a,
-      roughness: 0.15,
+      color: 0xf0f2f5,
+      roughness: 0.3,
       metalness: 0.0,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.8,
     })
     
     const ground = new THREE.Mesh(groundGeometry, groundMaterial)
