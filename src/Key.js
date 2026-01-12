@@ -12,50 +12,35 @@ export class Key {
     this.colorName = keyData.color
     this.isPressed = false
     
-    this.group = new THREE.Group()
-    this.createKeycap()
-    this.originalY = this.group.position.y
-    this.hue = Math.random() // Random starting hue for rainbow effect
-    this.hueSpeed = 0.5      // Hue cycle speed
-  }
-
-  createKeycap() {
-    const keyWidth = this.width * KEY_UNIT - KEY_GAP
+    // Key dimensions and geometry parameters
+    const keyWidth = (this.width * KEY_UNIT) - KEY_GAP
     const keyDepth = KEY_UNIT - KEY_GAP
+    const baseHeight = 0.008
+    const taperOffset = 0.0015
+    this.keyWidth = keyWidth
+    this.keyDepth = keyDepth
+    this.baseHeight = baseHeight
     
-    // mSA profile - taller keycaps with sculpted profile
-    const baseHeight = 0.0115  // Total keycap height
+    this.group = new THREE.Group()
+    const baseColor = COLORS[this.colorName] || COLORS.alphaKeys
     
-    // Get base color
-    const baseColor = COLORS[this.colorName] || COLORS.modKeys
-    
-    // mSA Taper offset - fixed reduction from base to top for consistent slopes
-    const taperOffset = 0.0022  // 2.2mm reduction on each side
-    
-    // Create mSA keycap with proper tapered sides
-    let keycapGeometry
-    if (this.code === 'Space') {
-        keycapGeometry = this.createConvexKeycapGeometry(
-            keyWidth, keyDepth, baseHeight, taperOffset
-        )
-    } else {
-        keycapGeometry = this.createTaperedBoxGeometry(
-            keyWidth, keyDepth, baseHeight, taperOffset
-        )
-    }
+    // Create realistic keycap geometry with rounding and scoops
+    const keycapGeometry = this.createRealisticKeycapGeometry(
+        keyWidth, keyDepth, baseHeight, taperOffset
+    )
     
     const keycapMaterial = new THREE.MeshStandardMaterial({
       color: baseColor,
-      roughness: 0.85, // Matte finish, no more shine
-      metalness: 0.0,
+      roughness: 0.75, // Authentic plastic feel
+      metalness: 0.05, // Slight highlight on curved edges
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
-    keycap.position.y = baseHeight / 2
+    keycap.position.y = 0 // Geometry is already centered/positioned in creator
     keycap.castShadow = true
     keycap.receiveShadow = true
     this.keycapMesh = keycap
-    this.originalColor = new THREE.Color(baseColor) // Store original color for lighting effect
+    this.originalColor = new THREE.Color(baseColor)
     this.group.add(keycap)
     
     // Add legend on top (calculating top surface dimensions based on taperOffset)
@@ -74,7 +59,14 @@ export class Key {
       )
     }
     
-    // Add underglow light (always on rainbow)
+    // Lighting animation states
+    this.pulseTime = 0
+    this.hue = Math.random() // Random start hue for cycle
+    this.hueSpeed = 0.1
+    this.reactiveGlow = 0
+    this.geminiTime = 0
+    
+    // Add underglow light
     this.createUnderglow(keyWidth, keyDepth)
     
     // Position the key group
@@ -85,115 +77,103 @@ export class Key {
     this.mesh = this.group
   }
 
-  createTaperedBoxGeometry(width, depth, height, taperOffset) {
-    // Create a box that tapers from bottom (full size) to top (smaller)
-    // This creates the characteristic mSA profile with consistent slope angles
-    
-    const hw = width / 2   // Half width at bottom
-    const hd = depth / 2   // Half depth at bottom
-    const thw = Math.max(0.001, hw - taperOffset)  // Fixed offset for consistent slope
-    const thd = Math.max(0.001, hd - taperOffset)  // Fixed offset for consistent slope
-    const hh = height / 2
-    
-    // Define 8 vertices of tapered box
-    // Bottom face (y = -hh), larger
-    // Top face (y = +hh), smaller
-    const vertices = new Float32Array([
-      // Bottom face - 4 vertices
-      -hw, -hh,  hd,   // 0: front-left bottom
-       hw, -hh,  hd,   // 1: front-right bottom
-       hw, -hh, -hd,   // 2: back-right bottom
-      -hw, -hh, -hd,   // 3: back-left bottom
-      
-      // Top face - 4 vertices (tapered inward)
-      -thw, hh,  thd,  // 4: front-left top
-       thw, hh,  thd,  // 5: front-right top
-       thw, hh, -thd,  // 6: back-right top
-      -thw, hh, -thd,  // 7: back-left top
-    ])
-    
-    // Define face indices (triangles)
-    const indices = [
-      // Bottom face
-      0, 2, 1,
-      0, 3, 2,
-      
-      // Top face
-      4, 5, 6,
-      4, 6, 7,
-      
-      // Front face
-      0, 1, 5,
-      0, 5, 4,
-      
-      // Back face
-      2, 3, 7,
-      2, 7, 6,
-      
-      // Left face
-      3, 0, 4,
-      3, 4, 7,
-      
-      // Right face
-      1, 2, 6,
-      1, 6, 5,
-    ]
-    
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
-    geometry.setIndex(indices)
+  createRealisticKeycapGeometry(width, depth, height, taperOffset) {
+    const segments = 16
+    const geometry = new THREE.BoxGeometry(width, height, depth, segments, segments, segments)
+    const position = geometry.attributes.position
+    const vector = new THREE.Vector3()
+
+    const halfW = width / 2
+    const halfD = depth / 2
+    const halfH = height / 2
+
+    // Parameters for realism
+    const cornerRadius = 0.0012 // Radius for vertical corners
+    const topEdgeRadius = 0.0008 // Radius for top horizontal edges
+    const scoopDepth = 0.0006   // Depth of the cylindrical scoop
+    const topSurfaceY = halfH
+
+    for (let i = 0; i < position.count; i++) {
+        vector.fromBufferAttribute(position, i)
+
+        let x = vector.x
+        let y = vector.y
+        let z = vector.z
+
+        // 1. Tapering: Squeeze vertices based on height
+        // height goes from -halfH to halfH
+        // t is 0 at bottom, 1 at top
+        const t = (y + halfH) / height
+        const currentTaper = t * taperOffset
+        
+        // Apply taper (ensure we don't invert the geometry)
+        const taperScaleX = (halfW - currentTaper) / halfW
+        const taperScaleZ = (halfD - currentTaper) / halfD
+        
+        x *= taperScaleX
+        z *= taperScaleZ
+
+        // 2. Rounded Corners (Vertical)
+        // We apply a soft clamp/round effect to the corners
+        const absX = Math.abs(x)
+        const absZ = Math.abs(z)
+        const currentW = halfW - currentTaper
+        const currentD = halfD - currentTaper
+        
+        const innerW = currentW - cornerRadius
+        const innerD = currentD - cornerRadius
+        
+        if (absX > innerW && absZ > innerD) {
+            // Vertex is in a corner region - round it
+            const dx = absX - innerW
+            const dz = absZ - innerD
+            const dist = Math.sqrt(dx * dx + dz * dz)
+            if (dist > cornerRadius) {
+                const scale = cornerRadius / dist
+                x = (innerW + dx * scale) * Math.sign(x)
+                z = (innerD + dz * scale) * Math.sign(z)
+            }
+        }
+
+        // 3. Top Edge Rounding & Scoop
+        if (y > halfH - topEdgeRadius * 2) {
+            // Soften the top side edges
+            const dy = halfH - y
+            if (absX > currentW - topEdgeRadius) {
+                const dx = absX - (currentW - topEdgeRadius)
+                const dist = Math.sqrt(dx * dx + (topEdgeRadius - dy) * (topEdgeRadius - dy))
+                if (dist > topEdgeRadius && y > halfH - topEdgeRadius) {
+                    const scale = topEdgeRadius / dist
+                    // We don't want to bring Y down too much, just round it
+                    // y = halfH - topEdgeRadius + (topEdgeRadius - dy) * scale
+                }
+            }
+            
+            // Apply Cylindrical Scoop for non-spacebar keys
+            if (this.code !== 'Space' && y > halfH * 0.9) {
+                // Cylindrical scoop along X axis (so curve is visible from front)
+                // Scoop depth depends on distance from center X
+                const normX = x / (currentW - cornerRadius)
+                const scoopEffect = Math.max(0, 1 - normX * normX)
+                // Only apply if near the top
+                if (y > halfH * 0.95) {
+                    y -= scoopEffect * scoopDepth
+                }
+            }
+        }
+        
+        // Special case for Spacebar: Convex (already handled by logic, but let's refine here)
+        if (this.code === 'Space' && y > 0) {
+            const normZ = z / (currentD - cornerRadius)
+            const convexEffect = Math.max(0, 1 - normZ * normZ)
+            y += convexEffect * 0.0015 
+        }
+
+        position.setXYZ(i, x, y + halfH, z)
+    }
+
     geometry.computeVertexNormals()
-    
     return geometry
-  }
-
-  createConvexKeycapGeometry(width, depth, height, taperOffset) {
-      // Create a CONVEX (rounded top) profile for the spacebar
-      // Use ExtrudeGeometry to extrude the profile along the width (X axis)
-
-      const shape = new THREE.Shape()
-
-      const hd = depth / 2
-      const thd = Math.max(0.001, hd - taperOffset)  // Fixed offset for consistent slope
-
-      // Side view profile (YZ plane, looking from side)
-      // Starting from bottom-right (back-bottom in local coordinates) clockwise
-
-      // 1. Bottom-Back
-      shape.moveTo(hd, 0)
-      
-      // 2. Tapered Back Side
-      shape.lineTo(thd, height)
-
-      // 3. Convex Top (Curve from Back-Top to Front-Top)
-      // Quadratic curve for a gentle rounded top
-      // Control point is higher than height to create the bump
-      const controlY = height + 0.002 // convex amount
-      shape.quadraticCurveTo(0, controlY, -thd, height)
-
-      // 4. Front Side
-      shape.lineTo(-hd, 0)
-
-      // 5. Close bottom
-      shape.lineTo(hd, 0)
-
-      const extrudeSettings = {
-          steps: 1,
-          depth: width, // Extrude along width
-          bevelEnabled: true,
-          bevelThickness: 0.0005,
-          bevelSize: 0.0005,
-          bevelSegments: 2
-      }
-
-      const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings)
-      
-      // Center the geometry
-      geometry.center()
-      
-      geometry.rotateY(Math.PI / 2) 
-      
-      return geometry
   }
 
   createLegend(width, depth, height, baseColor) {
