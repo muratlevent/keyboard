@@ -15,7 +15,7 @@ export class Keyboard {
     this.keys = new Map()
     
     // Case dimensions
-    this.casePadding = 0.006       // Padding around keys
+    this.casePadding = 0.002       // Reduced padding around keys for snugger fit
     this.caseBaseHeight = 0.014    // Height of case base
     this.plateHeight = 0.002       // Height of the mounting plate
     this.wallHeight = 0.006        // Walls extend above base
