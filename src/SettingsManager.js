@@ -129,3 +129,15 @@ function dispatchLightingChange() {
     detail: { ...lightingSettings }
   }))
 }
+
+// Dark Mode
+let darkMode = false
+
+export function getDarkMode() {
+  return darkMode
+}
+
+export function setDarkMode(enabled) {
+  darkMode = enabled
+  window.dispatchEvent(new CustomEvent('darkmodechange', { detail: enabled }))
+}

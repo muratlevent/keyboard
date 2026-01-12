@@ -10,6 +10,12 @@ body {
   min-height: 100vh;
   overflow: hidden;
   color: #333333;
+  transition: background 0.5s ease, color 0.3s ease;
+}
+
+body.dark-mode {
+  background: linear-gradient(135deg, #0d0d0f 0%, #1a1a1e 50%, #0d0d0f 100%);
+  color: #e0e0e0;
 }
 
 #app {
@@ -38,8 +44,45 @@ body {
   border-radius: 0 16px 16px 0;
   box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease, border-color 0.5s ease;
   overflow: hidden;
+}
+
+body.dark-mode .settings-panel {
+  background: rgba(30, 30, 35, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .panel-title,
+body.dark-mode .panel-subtitle {
+  color: #888;
+}
+
+body.dark-mode .setting-group label {
+  color: #aaa;
+}
+
+body.dark-mode .setting-group select {
+  background: linear-gradient(135deg, #2a2a30 0%, #222228 100%);
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .panel-toggle {
+  background: rgba(30, 30, 35, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .info-panel h1 {
+  background: linear-gradient(135deg, #e0e0e0 0%, #aaa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+body.dark-mode .info-panel p,
+body.dark-mode .info-panel .hint {
+  color: #999;
 }
 
 .settings-panel.collapsed {

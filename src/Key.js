@@ -289,20 +289,20 @@ export class Key {
   }
 
   createUnderglow(width, depth) {
-    // Create a larger, more visible glow plane under the keycap
-    const glowGeometry = new THREE.PlaneGeometry(width * 1.05, depth * 1.05)
+    // Create a larger glow plane that extends beyond keycap edges for smooth light bleed
+    const glowGeometry = new THREE.PlaneGeometry(width * 1.15, depth * 1.15)
     
-    // Use MeshBasicMaterial with transparent and high opacity for visibility
+    // Use MeshBasicMaterial with soft glow
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.25, // Visible but subtle when idle
+      opacity: 0.35, // More visible for smoother effect
       side: THREE.DoubleSide,
     })
     
     const glow = new THREE.Mesh(glowGeometry, glowMaterial)
     glow.rotation.x = -Math.PI / 2
-    glow.position.y = 0.001 // Just above the plate
+    glow.position.y = 0.0005 // Slightly above the plate
     this.underglowMesh = glow
     this.group.add(glow)
   }

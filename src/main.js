@@ -8,7 +8,8 @@ import {
   setLightingEnabled, 
   setLightingBrightness, 
   setLightingColor, 
-  setLightingEffect 
+  setLightingEffect,
+  setDarkMode 
 } from './SettingsManager.js'
 
 class App {
@@ -176,11 +177,11 @@ class App {
       opacity: 0.8,
     })
     
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial)
-    ground.rotation.x = -Math.PI / 2
-    ground.position.y = 0
-    ground.receiveShadow = true
-    this.scene.add(ground)
+    this.groundMesh = new THREE.Mesh(groundGeometry, groundMaterial)
+    this.groundMesh.rotation.x = -Math.PI / 2
+    this.groundMesh.position.y = 0
+    this.groundMesh.receiveShadow = true
+    this.scene.add(this.groundMesh)
   }
 
   setupEventListeners() {
@@ -253,6 +254,22 @@ class App {
     if (effectSelector) {
       effectSelector.addEventListener('change', (e) => {
         setLightingEffect(e.target.value)
+      })
+    }
+    
+    // Dark mode toggle
+    const darkModeToggle = document.getElementById('dark-mode-toggle')
+    if (darkModeToggle) {
+      darkModeToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked
+        setDarkMode(enabled)
+        document.body.classList.toggle('dark-mode', enabled)
+        // Update Three.js scene background
+        this.scene.background = new THREE.Color(enabled ? 0x0d0d0f : 0xf0f2f5)
+        // Update ground material
+        if (this.groundMesh) {
+          this.groundMesh.material.color.set(enabled ? 0x1a1a1e : 0xf0f2f5)
+        }
       })
     }
   }
