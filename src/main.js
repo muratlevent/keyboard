@@ -63,9 +63,13 @@ class App {
   }
 
   initLights() {
+    // Store lights for dynamic intensity control
+    this.sceneLights = []
+    
     // Ambient light
     const ambient = new THREE.AmbientLight(0xffffff, 0.35)
     this.scene.add(ambient)
+    this.sceneLights.push({ light: ambient, baseIntensity: 0.35 })
     
     // Main key light (top-front-right) - warm
     const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2)
@@ -82,26 +86,39 @@ class App {
     keyLight.shadow.bias = -0.0005
     keyLight.shadow.radius = 2
     this.scene.add(keyLight)
+    this.sceneLights.push({ light: keyLight, baseIntensity: 1.2 })
     
     // Fill light (left side) - cool
     const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5)
     fillLight.position.set(-0.5, 0.4, 0.3)
     this.scene.add(fillLight)
+    this.sceneLights.push({ light: fillLight, baseIntensity: 0.5 })
     
     // Rim light (back-right) - accent
     const rimLight = new THREE.DirectionalLight(0xffd4c4, 0.6)
     rimLight.position.set(0.3, 0.15, -0.4)
     this.scene.add(rimLight)
+    this.sceneLights.push({ light: rimLight, baseIntensity: 0.6 })
     
     // Top light for key highlights
     const topLight = new THREE.DirectionalLight(0xffffff, 0.4)
     topLight.position.set(0, 1, 0)
     this.scene.add(topLight)
+    this.sceneLights.push({ light: topLight, baseIntensity: 0.4 })
     
     // Subtle point light for case reflection
     const caseLight = new THREE.PointLight(0xffd4c4, 0.3, 1)
     caseLight.position.set(0, 0.1, 0.4)
     this.scene.add(caseLight)
+    this.sceneLights.push({ light: caseLight, baseIntensity: 0.3 })
+  }
+
+  setRoomLightIntensity(percent) {
+    // Scale all scene lights by the given percentage (0-100)
+    const scale = percent / 100
+    this.sceneLights.forEach(({ light, baseIntensity }) => {
+      light.intensity = baseIntensity * scale
+    })
   }
 
   initEnvironment() {
@@ -270,6 +287,17 @@ class App {
         if (this.groundMesh) {
           this.groundMesh.material.color.set(enabled ? 0x1a1a1e : 0xf0f2f5)
         }
+      })
+    }
+    
+    // Room light intensity slider
+    const roomLightSlider = document.getElementById('room-light')
+    const roomLightValue = document.getElementById('room-light-value')
+    if (roomLightSlider) {
+      roomLightSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value)
+        this.setRoomLightIntensity(value)
+        if (roomLightValue) roomLightValue.textContent = `${value}%`
       })
     }
   }
