@@ -30,17 +30,15 @@ export class Key {
         keyWidth, keyDepth, baseHeight, taperOffset, this.row
     )
     
-    // Use MeshPhysicalMaterial for premium plastic appearance with reflective edges
+    // Use MeshPhysicalMaterial for matte plastic appearance with uniform lighting
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: 0.4,          // Smoother for better reflections
-      metalness: 0.0,          // Pure plastic, no metallic
-      clearcoat: 0.35,         // Stronger glossy coating for edge reflections
-      clearcoatRoughness: 0.15, // Smoother clearcoat for sharper reflections
-      reflectivity: 0.7,       // Higher reflectivity for realistic look
-      sheen: 0.4,              // Soft sheen for edges
-      sheenRoughness: 0.3,     // Moderate sheen roughness
-      sheenColor: new THREE.Color(0xffffff), // White sheen color
+      roughness: 0.65,          // Higher roughness for matte look (no glossy hotspots)
+      metalness: 0.0,           // Pure plastic, no metallic
+      clearcoat: 0.08,          // Minimal clearcoat to reduce specular highlights
+      clearcoatRoughness: 0.6,  // Rough clearcoat for diffuse reflections
+      reflectivity: 0.2,        // Lower reflectivity for uniform appearance
+      // Removed sheen properties to eliminate glossy edge highlights
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -257,13 +255,13 @@ export class Key {
     // Create top face plane with matching dimensions
     const topGeometry = new THREE.PlaneGeometry(width, depth)
     
-    // Use MeshPhysicalMaterial for consistency with keycap
+    // Use MeshPhysicalMaterial for consistency with matte keycap
     const topMaterial = new THREE.MeshPhysicalMaterial({
       map: texture,
-      roughness: 0.4,
+      roughness: 0.65,         // Match keycap roughness for uniform look
       metalness: 0.0,
-      clearcoat: 0.15,
-      clearcoatRoughness: 0.3,
+      clearcoat: 0.05,         // Minimal clearcoat
+      clearcoatRoughness: 0.6,
       transparent: true,       // Enable transparency
       opacity: 1.0,
       depthWrite: false,       // Don't write to depth buffer to avoid z-fighting issues with transparency
