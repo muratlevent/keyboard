@@ -3,7 +3,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { Keyboard } from './Keyboard.js'
 import { InputHandler } from './InputHandler.js'
-import { setLayout } from './SettingsManager.js'
+import { 
+  setLayout, 
+  setLightingEnabled, 
+  setLightingBrightness, 
+  setLightingColor, 
+  setLightingEffect 
+} from './SettingsManager.js'
 
 class App {
   constructor() {
@@ -208,6 +214,45 @@ class App {
     if (layoutSelector) {
       layoutSelector.addEventListener('change', (e) => {
         setLayout(e.target.value)
+        this.keyboard.updateKeyLabels()
+      })
+    }
+    
+    // Lighting toggle
+    const lightingToggle = document.getElementById('lighting-toggle')
+    if (lightingToggle) {
+      lightingToggle.addEventListener('change', (e) => {
+        setLightingEnabled(e.target.checked)
+      })
+    }
+    
+    // Brightness slider
+    const brightnessSlider = document.getElementById('lighting-brightness')
+    const brightnessValue = document.getElementById('brightness-value')
+    if (brightnessSlider) {
+      brightnessSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value)
+        setLightingBrightness(value)
+        if (brightnessValue) brightnessValue.textContent = `${value}%`
+      })
+    }
+    
+    // Color picker
+    const colorPicker = document.getElementById('lighting-color')
+    const colorHex = document.getElementById('color-hex')
+    if (colorPicker) {
+      colorPicker.addEventListener('input', (e) => {
+        const color = e.target.value
+        setLightingColor(color)
+        if (colorHex) colorHex.textContent = color.toUpperCase()
+      })
+    }
+    
+    // Effect selector
+    const effectSelector = document.getElementById('lighting-effect')
+    if (effectSelector) {
+      effectSelector.addEventListener('change', (e) => {
+        setLightingEffect(e.target.value)
       })
     }
   }

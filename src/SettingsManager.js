@@ -71,3 +71,61 @@ export function getKeyLabel(code, key) {
   // For other keys, return the key name
   return key || code
 }
+
+// Keycap labels for 3D keyboard legends (shorter symbols for keycaps)
+export const KEYCAP_LABELS_MACOS = {
+  'MetaLeft': '⌘',
+  'MetaRight': '⌘',
+  'AltLeft': '⌥',
+  'AltRight': '⌥',
+}
+
+export const KEYCAP_LABELS_WINDOWS = {
+  'MetaLeft': '⊞',
+  'MetaRight': '⊞',
+  'AltLeft': 'Alt',
+  'AltRight': 'Alt',
+}
+
+export function getKeycapLabel(code, defaultLabel) {
+  const labels = currentLayout === 'macos' ? KEYCAP_LABELS_MACOS : KEYCAP_LABELS_WINDOWS
+  return labels[code] || defaultLabel
+}
+
+// Lighting Settings
+let lightingSettings = {
+  enabled: true,
+  brightness: 50,       // 0-100
+  color: '#00ffff',     // Hex color
+  effect: 'cycle'       // stable, pulse, cycle, gemini
+}
+
+export function getLightingSettings() {
+  return { ...lightingSettings }
+}
+
+export function setLightingEnabled(enabled) {
+  lightingSettings.enabled = enabled
+  dispatchLightingChange()
+}
+
+export function setLightingBrightness(brightness) {
+  lightingSettings.brightness = Math.max(0, Math.min(100, brightness))
+  dispatchLightingChange()
+}
+
+export function setLightingColor(color) {
+  lightingSettings.color = color
+  dispatchLightingChange()
+}
+
+export function setLightingEffect(effect) {
+  lightingSettings.effect = effect
+  dispatchLightingChange()
+}
+
+function dispatchLightingChange() {
+  window.dispatchEvent(new CustomEvent('lightingchange', { 
+    detail: { ...lightingSettings }
+  }))
+}

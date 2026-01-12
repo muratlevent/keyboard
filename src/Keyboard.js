@@ -7,6 +7,7 @@ import {
   KEYBOARD_WIDTH,
   KEYBOARD_HEIGHT,
 } from './KeyboardLayout.js'
+import { getKeycapLabel } from './SettingsManager.js'
 
 export class Keyboard {
   constructor() {
@@ -291,6 +292,20 @@ export class Keyboard {
 
   getMesh() {
     return this.group
+  }
+
+  updateKeyLabels() {
+    // Update key labels based on current OS layout
+    const keysToUpdate = ['MetaLeft', 'MetaRight', 'AltLeft', 'AltRight']
+    
+    keysToUpdate.forEach(code => {
+      const key = this.keys.get(code)
+      if (key) {
+        const keyData = KEYBOARD_LAYOUT.find(k => k.code === code)
+        const newLabel = getKeycapLabel(code, keyData?.label || '')
+        key.updateLabel(newLabel)
+      }
+    })
   }
 }
 
