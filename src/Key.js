@@ -30,14 +30,17 @@ export class Key {
         keyWidth, keyDepth, baseHeight, taperOffset, this.row
     )
     
-    // Use MeshPhysicalMaterial for premium plastic appearance
+    // Use MeshPhysicalMaterial for premium plastic appearance with reflective edges
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: 0.55,        // Smoother for sheen
-      metalness: 0.0,         // Pure plastic, no metallic
-      clearcoat: 0.15,        // Subtle glossy coating
-      clearcoatRoughness: 0.3,
-      reflectivity: 0.5,
+      roughness: 0.4,          // Smoother for better reflections
+      metalness: 0.0,          // Pure plastic, no metallic
+      clearcoat: 0.35,         // Stronger glossy coating for edge reflections
+      clearcoatRoughness: 0.15, // Smoother clearcoat for sharper reflections
+      reflectivity: 0.7,       // Higher reflectivity for realistic look
+      sheen: 0.4,              // Soft sheen for edges
+      sheenRoughness: 0.3,     // Moderate sheen roughness
+      sheenColor: new THREE.Color(0xffffff), // White sheen color
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -216,50 +219,9 @@ export class Key {
     // Clear canvas for transparency (no background color)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
-    // =====================================
-    // Gradient-based sculpting simulation (inspired by keysim texture.js)
-    // =====================================
-    
-    let sculptGradient
-    if (this.code === 'Space') {
-      // Spacebar: Convex gradient - darker on top, lighter on bottom
-      sculptGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      sculptGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')
-      sculptGradient.addColorStop(0.5, 'rgba(128, 128, 128, 0.0)')
-      sculptGradient.addColorStop(1, 'rgba(255, 255, 255, 0.12)')
-    } else {
-      // Regular keys: Concave gradient - lighter on left, darker on right
-      sculptGradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
-      sculptGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)')
-      sculptGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)')
-      sculptGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.0)')
-      sculptGradient.addColorStop(1, 'rgba(0, 0, 0, 0.12)')
-    }
-    
-    ctx.fillStyle = sculptGradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // Edge highlight strips (inspired by keysim)
-    const shineOpacity = 0.25
-    
-    // Bottom edge highlight
-    const shineBottom = ctx.createLinearGradient(0, 0, canvas.width, 0)
-    shineBottom.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    shineBottom.addColorStop(0.05, `rgba(255, 255, 255, ${0.4 * shineOpacity})`)
-    shineBottom.addColorStop(0.8, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
-    shineBottom.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    ctx.fillStyle = shineBottom
-    ctx.fillRect(0, canvas.height * 0.92, canvas.width, canvas.height * 0.08)
-    
-    // Right edge highlight  
-    const shineRight = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    shineRight.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    shineRight.addColorStop(0.1, `rgba(255, 255, 255, ${0.3 * shineOpacity})`)
-    shineRight.addColorStop(0.5, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
-    shineRight.addColorStop(0.85, `rgba(255, 255, 255, ${0.6 * shineOpacity})`)
-    shineRight.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    ctx.fillStyle = shineRight
-    ctx.fillRect(canvas.width * 0.92, 0, canvas.width * 0.08, canvas.height)
+    // NOTE: Removed sculpting gradients and edge highlights
+    // These were causing a visible rectangle overlay on the keycap
+    // The keycap material itself now handles the reflective/sculpted look
     
     // =====================================
     // Draw legend text
@@ -298,22 +260,23 @@ export class Key {
     // Use MeshPhysicalMaterial for consistency with keycap
     const topMaterial = new THREE.MeshPhysicalMaterial({
       map: texture,
-      roughness: 0.45,
+      roughness: 0.4,
       metalness: 0.0,
-      clearcoat: 0.1,
-      clearcoatRoughness: 0.4,
-      transparent: true,     // Enable transparency
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.3,
+      transparent: true,       // Enable transparency
       opacity: 1.0,
-      depthWrite: false,     // Don't write to depth buffer to avoid z-fighting issues with transparency
-      polygonOffset: true,   // Use polygon offset to prevent z-fighting
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
+      depthWrite: false,       // Don't write to depth buffer to avoid z-fighting issues with transparency
+      polygonOffset: true,     // Use polygon offset to prevent z-fighting
+      polygonOffsetFactor: -4, // Stronger offset to ensure legend sits flush
+      polygonOffsetUnits: -4,  // Stronger units offset
     })
     
     const topFace = new THREE.Mesh(topGeometry, topMaterial)
     topFace.rotation.x = -Math.PI / 2
-    // Place legend flush with keycap top for seamless integration
-    topFace.position.y = height + 0.0001
+    // Place legend exactly on keycap surface - account for scoop depth
+    // Use very small offset (0.00005) to sit flush against surface
+    topFace.position.y = height - 0.00005
     this.legendMesh = topFace
     this.legendCanvas = canvas
     this.legendBaseColor = baseColor
@@ -363,50 +326,8 @@ export class Key {
     // Clear canvas for transparency (no background color)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
-    // =====================================
-    // Gradient-based sculpting simulation
-    // =====================================
-    
-    let sculptGradient
-    if (this.code === 'Space') {
-      // Spacebar: Convex gradient - darker on top, lighter on bottom
-      sculptGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-      sculptGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')
-      sculptGradient.addColorStop(0.5, 'rgba(128, 128, 128, 0.0)')
-      sculptGradient.addColorStop(1, 'rgba(255, 255, 255, 0.12)')
-    } else {
-      // Regular keys: Concave gradient - lighter on left, darker on right
-      sculptGradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
-      sculptGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)')
-      sculptGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)')
-      sculptGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.0)')
-      sculptGradient.addColorStop(1, 'rgba(0, 0, 0, 0.12)')
-    }
-    
-    ctx.fillStyle = sculptGradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // Edge highlight strips
-    const shineOpacity = 0.25
-    
-    // Bottom edge highlight
-    const shineBottom = ctx.createLinearGradient(0, 0, canvas.width, 0)
-    shineBottom.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    shineBottom.addColorStop(0.05, `rgba(255, 255, 255, ${0.4 * shineOpacity})`)
-    shineBottom.addColorStop(0.8, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
-    shineBottom.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    ctx.fillStyle = shineBottom
-    ctx.fillRect(0, canvas.height * 0.92, canvas.width, canvas.height * 0.08)
-    
-    // Right edge highlight  
-    const shineRight = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    shineRight.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    shineRight.addColorStop(0.1, `rgba(255, 255, 255, ${0.3 * shineOpacity})`)
-    shineRight.addColorStop(0.5, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
-    shineRight.addColorStop(0.85, `rgba(255, 255, 255, ${0.6 * shineOpacity})`)
-    shineRight.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
-    ctx.fillStyle = shineRight
-    ctx.fillRect(canvas.width * 0.92, 0, canvas.width * 0.08, canvas.height)
+    // NOTE: Removed sculpting gradients and edge highlights
+    // These were causing a visible rectangle overlay on the keycap
     
     // =====================================
     // Draw legend text

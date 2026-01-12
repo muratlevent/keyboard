@@ -25,3 +25,5 @@ dist-ssr
 
 # Playwright/MCP artifacts
 .playwright-mcp/
+example/geometry.js
+example/texture.js
