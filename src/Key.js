@@ -30,9 +30,16 @@ export class Key {
     const topTaper = 0.78       // Top is 78% of bottom width - more pronounced taper
     
     // Create mSA keycap with proper tapered sides
-    const keycapGeometry = this.createTaperedBoxGeometry(
-      keyWidth, keyDepth, baseHeight, topTaper
-    )
+    let keycapGeometry
+    if (this.code === 'Space') {
+        keycapGeometry = this.createConvexKeycapGeometry(
+            keyWidth, keyDepth, baseHeight, topTaper
+        )
+    } else {
+        keycapGeometry = this.createTaperedBoxGeometry(
+            keyWidth, keyDepth, baseHeight, topTaper
+        )
+    }
     
     const keycapMaterial = new THREE.MeshStandardMaterial({
       color: baseColor,
@@ -125,6 +132,94 @@ export class Key {
     geometry.computeVertexNormals()
     
     return geometry
+  }
+
+  createConvexKeycapGeometry(width, depth, height, topTaper) {
+      // Create a CONVEX (rounded top) profile for the spacebar
+      // Use ExtrudeGeometry to extrude the profile along the width (X axis)
+
+      const shape = new THREE.Shape()
+
+      const hd = depth / 2
+      const thd = (depth / 2) * topTaper // Top half depth
+
+      // Side view profile (YZ plane, looking from side)
+      // Starting from bottom-right (back-bottom in local coordinates) clockwise
+
+      // 1. Bottom-Back
+      shape.moveTo(hd, 0)
+      
+      // 2. Tapered Back Side
+      shape.lineTo(thd, height)
+
+      // 3. Convex Top (Curve from Back-Top to Front-Top)
+      // Quadratic curve for a gentle rounded top
+      // Control point is higher than height to create the bump
+      const controlY = height + 0.002 // convex amount
+      shape.quadraticCurveTo(0, controlY, -thd, height)
+
+      // 4. Front Side
+      shape.lineTo(-hd, 0)
+
+      // 5. Close bottom
+      shape.lineTo(hd, 0)
+
+      const extrudeSettings = {
+          steps: 1,
+          depth: width, // Extrude along width
+          bevelEnabled: true,
+          bevelThickness: 0.0005,
+          bevelSize: 0.0005,
+          bevelSegments: 2
+      }
+
+      const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings)
+      
+      // Center the geometry
+      // ExtrudeGeometry extrudes along Z by default. 
+      // Our shape is in XY plane (actually we designed it as YZ profile in mind but drew in XY)
+      // Let's re-orient:
+      // We drew: X = depth axis, Y = height axis.
+      // Extrusion depth = key width.
+      
+      // Rotate to align:
+      // Currently: Shape X is Depth, Shape Y is Height. Extrusion Z is Width.
+      // Target: World X is Width, World Y is Height, World Z is Depth.
+      
+      geometry.center()
+      
+      // After center():
+      // X axis is Depth-ish
+      // Y axis is Height
+      // Z axis is Width-ish
+      
+      // We want:
+      // X -> Width
+      // Y -> Height
+      // Z -> Depth 
+      
+      // So verify axes of created geometry:
+      // Our shape was drawn in "XY" plane of Shape.
+      //   Shape X: [-hd, hd] (Depth)
+      //   Shape Y: [0, height] (Height)
+      // Extrusion is along Z: [0, width] (Width)
+      
+      // So we have:
+      // Local X = Depth
+      // Local Y = Height
+      // Local Z = Width
+      
+      // We want to map:
+      // Local Z -> World X (Width)
+      // Local Y -> World Y (Height)
+      // Local X -> World Z (Depth)
+      
+      geometry.rotateY(Math.PI / 2) 
+      // Now: 
+      // Old X (Depth) -> New Z (Depth)
+      // Old Z (Width) -> New X (Width)
+      
+      return geometry
   }
 
   createLegend(width, depth, height, baseColor) {
