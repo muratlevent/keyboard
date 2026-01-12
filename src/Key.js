@@ -16,23 +16,28 @@ export class Key {
     const keyWidth = (this.width * KEY_UNIT) - KEY_GAP
     const keyDepth = KEY_UNIT - KEY_GAP
     const baseHeight = 0.008
-    const taperOffset = 0.0015
+    const taperOffset = 0.0018 // Slightly more taper for sculpted look
     this.keyWidth = keyWidth
     this.keyDepth = keyDepth
     this.baseHeight = baseHeight
+    this.row = Math.floor(keyData.y) + 1 // Row for profile (1=top function row, 5=bottom spacebar row)
     
     this.group = new THREE.Group()
     const baseColor = COLORS[this.colorName] || COLORS.alphaKeys
     
-    // Create realistic keycap geometry with rounding and scoops
+    // Create realistic keycap geometry with rounding, scoops, and row profile
     const keycapGeometry = this.createRealisticKeycapGeometry(
-        keyWidth, keyDepth, baseHeight, taperOffset
+        keyWidth, keyDepth, baseHeight, taperOffset, this.row
     )
     
-    const keycapMaterial = new THREE.MeshStandardMaterial({
+    // Use MeshPhysicalMaterial for premium plastic appearance
+    const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: 0.75, // Authentic plastic feel
-      metalness: 0.05, // Slight highlight on curved edges
+      roughness: 0.55,        // Smoother for sheen
+      metalness: 0.0,         // Pure plastic, no metallic
+      clearcoat: 0.15,        // Subtle glossy coating
+      clearcoatRoughness: 0.3,
+      reflectivity: 0.5,
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -77,8 +82,8 @@ export class Key {
     this.mesh = this.group
   }
 
-  createRealisticKeycapGeometry(width, depth, height, taperOffset) {
-    const segments = 16
+  createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3) {
+    const segments = 20 // More segments for smoother curves
     const geometry = new THREE.BoxGeometry(width, height, depth, segments, segments, segments)
     const position = geometry.attributes.position
     const vector = new THREE.Vector3()
@@ -87,11 +92,20 @@ export class Key {
     const halfD = depth / 2
     const halfH = height / 2
 
-    // Parameters for realism
-    const cornerRadius = 0.0012 // Radius for vertical corners
-    const topEdgeRadius = 0.0008 // Radius for top horizontal edges
-    const scoopDepth = 0.0006   // Depth of the cylindrical scoop
-    const topSurfaceY = halfH
+    // Enhanced parameters for realism inspired by keysim
+    const cornerRadius = 0.0018  // Larger radius for more visible rounded corners
+    const topEdgeRadius = 0.0012 // Larger radius for top horizontal edges
+    const scoopDepth = 0.0012    // Deeper cylindrical scoop for sculpted feel
+    
+    // Row-based profile adjustment (inspired by keysim row angling)
+    const rowHeightAdjust = {
+      1: 0.0006,   // Number row (y=0) - slightly taller
+      2: 0.0003,   // QWERTY row (y=1)
+      3: 0.0,      // Home row (y=2) - baseline
+      4: -0.0002,  // Shift row (y=3) - slightly lower
+      5: -0.0004,  // Bottom row (y=4) - lowest
+    }
+    const heightAdjust = rowHeightAdjust[row] || 0
 
     for (let i = 0; i < position.count; i++) {
         vector.fromBufferAttribute(position, i)
@@ -149,25 +163,31 @@ export class Key {
                 }
             }
             
-            // Apply Cylindrical Scoop for non-spacebar keys
-            if (this.code !== 'Space' && y > halfH * 0.9) {
+            // Apply enhanced Cylindrical Scoop for non-spacebar keys
+            if (this.code !== 'Space' && y > halfH * 0.85) {
                 // Cylindrical scoop along X axis (so curve is visible from front)
                 // Scoop depth depends on distance from center X
                 const normX = x / (currentW - cornerRadius)
-                const scoopEffect = Math.max(0, 1 - normX * normX)
-                // Only apply if near the top
-                if (y > halfH * 0.95) {
-                    y -= scoopEffect * scoopDepth
+                const normZ = z / (currentD - cornerRadius)
+                // Combine X and Z for spherical-ish dish
+                const scoopEffect = Math.max(0, 1 - (normX * normX * 0.7 + normZ * normZ * 0.3))
+                // Gradual falloff near edges
+                if (y > halfH * 0.9) {
+                    const yFactor = (y - halfH * 0.9) / (halfH * 0.1)
+                    y -= scoopEffect * scoopDepth * yFactor
                 }
             }
         }
         
-        // Special case for Spacebar: Convex (already handled by logic, but let's refine here)
+        // Special case for Spacebar: Convex with enhanced curvature
         if (this.code === 'Space' && y > 0) {
             const normZ = z / (currentD - cornerRadius)
             const convexEffect = Math.max(0, 1 - normZ * normZ)
-            y += convexEffect * 0.0015 
+            y += convexEffect * 0.0020  // Slightly more pronounced convex
         }
+        
+        // Apply row-based height adjustment
+        y += heightAdjust * (y + halfH) / height
 
         position.setXYZ(i, x, y + halfH, z)
     }
@@ -196,21 +216,70 @@ export class Key {
     // Clear canvas for transparency (no background color)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
+    // =====================================
+    // Gradient-based sculpting simulation (inspired by keysim texture.js)
+    // =====================================
+    
+    let sculptGradient
+    if (this.code === 'Space') {
+      // Spacebar: Convex gradient - darker on top, lighter on bottom
+      sculptGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      sculptGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')
+      sculptGradient.addColorStop(0.5, 'rgba(128, 128, 128, 0.0)')
+      sculptGradient.addColorStop(1, 'rgba(255, 255, 255, 0.12)')
+    } else {
+      // Regular keys: Concave gradient - lighter on left, darker on right
+      sculptGradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
+      sculptGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)')
+      sculptGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)')
+      sculptGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.0)')
+      sculptGradient.addColorStop(1, 'rgba(0, 0, 0, 0.12)')
+    }
+    
+    ctx.fillStyle = sculptGradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Edge highlight strips (inspired by keysim)
+    const shineOpacity = 0.25
+    
+    // Bottom edge highlight
+    const shineBottom = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    shineBottom.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    shineBottom.addColorStop(0.05, `rgba(255, 255, 255, ${0.4 * shineOpacity})`)
+    shineBottom.addColorStop(0.8, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
+    shineBottom.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    ctx.fillStyle = shineBottom
+    ctx.fillRect(0, canvas.height * 0.92, canvas.width, canvas.height * 0.08)
+    
+    // Right edge highlight  
+    const shineRight = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    shineRight.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    shineRight.addColorStop(0.1, `rgba(255, 255, 255, ${0.3 * shineOpacity})`)
+    shineRight.addColorStop(0.5, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
+    shineRight.addColorStop(0.85, `rgba(255, 255, 255, ${0.6 * shineOpacity})`)
+    shineRight.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    ctx.fillStyle = shineRight
+    ctx.fillRect(canvas.width * 0.92, 0, canvas.width * 0.08, canvas.height)
+    
+    // =====================================
+    // Draw legend text
+    // =====================================
+    
     // Determine text color based on keycap color
     const useDarkText = ['alphaKeys', 'modKeys', 'accentYellow'].includes(this.colorName)
-    const textColor = useDarkText ? 'rgba(70, 70, 75, 0.95)' : 'rgba(255, 255, 255, 0.98)'
+    const textColor = useDarkText ? 'rgba(60, 60, 65, 0.92)' : 'rgba(255, 255, 255, 0.95)'
     
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
     // Font size based on label length - relative to canvas height for proper scaling
-    const baseHeight = canvas.height
-    let fontSize = baseHeight * 0.4
-    if (this.label.length === 1) fontSize = baseHeight * 0.45
-    else if (this.label.length === 2) fontSize = baseHeight * 0.35
-    else if (this.label.length <= 4) fontSize = baseHeight * 0.22
-    else fontSize = baseHeight * 0.18
+    const canvasHeight = canvas.height
+    let fontSize = canvasHeight * 0.4
+    if (this.label.length === 1) fontSize = canvasHeight * 0.45
+    else if (this.label.length === 2) fontSize = canvasHeight * 0.35
+    else if (this.label.length <= 4) fontSize = canvasHeight * 0.22
+    else fontSize = canvasHeight * 0.18
     
     // Use system font for clean look
     ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
@@ -226,10 +295,13 @@ export class Key {
     // Create top face plane with matching dimensions
     const topGeometry = new THREE.PlaneGeometry(width, depth)
     
-    const topMaterial = new THREE.MeshStandardMaterial({
+    // Use MeshPhysicalMaterial for consistency with keycap
+    const topMaterial = new THREE.MeshPhysicalMaterial({
       map: texture,
-      roughness: 0.5,
-      metalness: 0.02,
+      roughness: 0.45,
+      metalness: 0.0,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.4,
       transparent: true,     // Enable transparency
       opacity: 1.0,
       depthWrite: false,     // Don't write to depth buffer to avoid z-fighting issues with transparency
@@ -291,21 +363,70 @@ export class Key {
     // Clear canvas for transparency (no background color)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
+    // =====================================
+    // Gradient-based sculpting simulation
+    // =====================================
+    
+    let sculptGradient
+    if (this.code === 'Space') {
+      // Spacebar: Convex gradient - darker on top, lighter on bottom
+      sculptGradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      sculptGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')
+      sculptGradient.addColorStop(0.5, 'rgba(128, 128, 128, 0.0)')
+      sculptGradient.addColorStop(1, 'rgba(255, 255, 255, 0.12)')
+    } else {
+      // Regular keys: Concave gradient - lighter on left, darker on right
+      sculptGradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
+      sculptGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)')
+      sculptGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)')
+      sculptGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.0)')
+      sculptGradient.addColorStop(1, 'rgba(0, 0, 0, 0.12)')
+    }
+    
+    ctx.fillStyle = sculptGradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Edge highlight strips
+    const shineOpacity = 0.25
+    
+    // Bottom edge highlight
+    const shineBottom = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    shineBottom.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    shineBottom.addColorStop(0.05, `rgba(255, 255, 255, ${0.4 * shineOpacity})`)
+    shineBottom.addColorStop(0.8, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
+    shineBottom.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    ctx.fillStyle = shineBottom
+    ctx.fillRect(0, canvas.height * 0.92, canvas.width, canvas.height * 0.08)
+    
+    // Right edge highlight  
+    const shineRight = ctx.createLinearGradient(0, 0, 0, canvas.height)
+    shineRight.addColorStop(0, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    shineRight.addColorStop(0.1, `rgba(255, 255, 255, ${0.3 * shineOpacity})`)
+    shineRight.addColorStop(0.5, `rgba(255, 255, 255, ${0.5 * shineOpacity})`)
+    shineRight.addColorStop(0.85, `rgba(255, 255, 255, ${0.6 * shineOpacity})`)
+    shineRight.addColorStop(0.95, `rgba(255, 255, 255, ${0 * shineOpacity})`)
+    ctx.fillStyle = shineRight
+    ctx.fillRect(canvas.width * 0.92, 0, canvas.width * 0.08, canvas.height)
+    
+    // =====================================
+    // Draw legend text
+    // =====================================
+    
     // Determine text color
     const useDarkText = ['alphaKeys', 'modKeys', 'accentYellow'].includes(this.colorName)
-    const textColor = useDarkText ? 'rgba(70, 70, 75, 0.95)' : 'rgba(255, 255, 255, 0.98)'
+    const textColor = useDarkText ? 'rgba(60, 60, 65, 0.92)' : 'rgba(255, 255, 255, 0.95)'
     
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
     // Font size based on label length - relative to canvas height
-    const baseHeight = canvas.height
-    let fontSize = baseHeight * 0.4
-    if (newLabel.length === 1) fontSize = baseHeight * 0.45
-    else if (newLabel.length === 2) fontSize = baseHeight * 0.35
-    else if (newLabel.length <= 4) fontSize = baseHeight * 0.22
-    else fontSize = baseHeight * 0.18
+    const canvasHeight = canvas.height
+    let fontSize = canvasHeight * 0.4
+    if (newLabel.length === 1) fontSize = canvasHeight * 0.45
+    else if (newLabel.length === 2) fontSize = canvasHeight * 0.35
+    else if (newLabel.length <= 4) fontSize = canvasHeight * 0.22
+    else fontSize = canvasHeight * 0.18
     
     ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
     ctx.fillText(newLabel, canvas.width / 2, canvas.height / 2)
