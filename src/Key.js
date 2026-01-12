@@ -6,6 +6,7 @@ export class Key {
   constructor(keyData) {
     this.code = keyData.code
     this.label = keyData.label
+    this.shiftLabel = keyData.shiftLabel || null  // Shift character for dual-legend keys
     this.width = keyData.width
     this.x = keyData.x
     this.y = keyData.y
@@ -217,12 +218,8 @@ export class Key {
     // Clear canvas for transparency (no background color)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
-    // NOTE: Removed sculpting gradients and edge highlights
-    // These were causing a visible rectangle overlay on the keycap
-    // The keycap material itself now handles the reflective/sculpted look
-    
     // =====================================
-    // Draw legend text
+    // Draw legend text (dual-legend support)
     // =====================================
     
     // Determine text color based on keycap color
@@ -230,20 +227,54 @@ export class Key {
     const textColor = useDarkText ? 'rgba(60, 60, 65, 0.92)' : 'rgba(255, 255, 255, 0.95)'
     
     ctx.fillStyle = textColor
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
     
-    // Font size based on label length - relative to canvas height for proper scaling
     const canvasHeight = canvas.height
-    let fontSize = canvasHeight * 0.4
-    if (this.label.length === 1) fontSize = canvasHeight * 0.45
-    else if (this.label.length === 2) fontSize = canvasHeight * 0.35
-    else if (this.label.length <= 4) fontSize = canvasHeight * 0.22
-    else fontSize = canvasHeight * 0.18
+    const canvasWidth = canvas.width
     
-    // Use system font for clean look
-    ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.fillText(this.label, canvas.width / 2, canvas.height / 2)
+    // Check if this is a dual-legend key (has shiftLabel)
+    if (this.shiftLabel) {
+      // Dual-legend layout: shift character on top, main character below
+      // Following the reference image style
+      
+      // Shift character (smaller, positioned at top-center)
+      const shiftFontSize = canvasHeight * 0.32
+      ctx.font = `600 ${shiftFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(this.shiftLabel, canvasWidth / 2, canvasHeight * 0.30)
+      
+      // Main character (larger, positioned at bottom-center)
+      const mainFontSize = canvasHeight * 0.38
+      ctx.font = `600 ${mainFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.68)
+      
+    } else {
+      // Single legend - centered
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      // Font size based on label length and type
+      // Unicode symbols (1 char) get larger size for visibility
+      let fontSize = canvasHeight * 0.4
+      let fontWeight = '700' // Bolder for better visibility
+      
+      if (this.label.length === 1) {
+        // Single character - large and bold (includes Unicode symbols like ⌘, ⌥, ⇧, ↵)
+        fontSize = canvasHeight * 0.55
+      } else if (this.label.length === 2) {
+        // Two chars like Fn, PgUp abbreviations
+        fontSize = canvasHeight * 0.4
+      } else if (this.label.length <= 4) {
+        // Short words like Home, End, PgUp, PgDn
+        fontSize = canvasHeight * 0.28
+      } else {
+        // Longer words - shouldn't happen often now with macOS symbols
+        fontSize = canvasHeight * 0.22
+      }
+      
+      ctx.font = `${fontWeight} ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(this.label, canvasWidth / 2, canvasHeight / 2)
+    }
     
     // Create texture with proper settings for seamless appearance
     const texture = new THREE.CanvasTexture(canvas)
