@@ -7,15 +7,32 @@ export class InputHandler {
     this.pressedKeys = new Set()
     this.soundManager = getSoundManager()
     
+    // Store bound event handlers for cleanup
+    this.boundKeyDown = (e) => this.onKeyDown(e)
+    this.boundKeyUp = (e) => this.onKeyUp(e)
+    this.boundBlur = () => this.releaseAllKeys()
+    
     this.setupEventListeners()
   }
 
   setupEventListeners() {
-    window.addEventListener('keydown', (e) => this.onKeyDown(e))
-    window.addEventListener('keyup', (e) => this.onKeyUp(e))
+    window.addEventListener('keydown', this.boundKeyDown)
+    window.addEventListener('keyup', this.boundKeyUp)
     
     // Handle window blur - release all keys
-    window.addEventListener('blur', () => this.releaseAllKeys())
+    window.addEventListener('blur', this.boundBlur)
+  }
+
+  destroy() {
+    // Remove all event listeners to prevent memory leaks and duplicate handlers
+    window.removeEventListener('keydown', this.boundKeyDown)
+    window.removeEventListener('keyup', this.boundKeyUp)
+    window.removeEventListener('blur', this.boundBlur)
+    
+    // Clear any pending timeouts
+    if (this.indicatorTimeout) {
+      clearTimeout(this.indicatorTimeout)
+    }
   }
 
   onKeyDown(event) {
@@ -74,3 +91,4 @@ export class InputHandler {
     }, 800)
   }
 }
+

@@ -202,6 +202,11 @@ class App {
       })
     }
     
+    // Destroy old input handler to remove event listeners
+    if (this.inputHandler) {
+      this.inputHandler.destroy()
+    }
+    
     // Create new keyboard with new theme colors
     this.keyboard = new Keyboard()
     this.scene.add(this.keyboard.getMesh())
