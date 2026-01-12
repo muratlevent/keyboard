@@ -151,6 +151,69 @@ export const KEYBOARD_THEMES = {
       caseDark: 0xf0d0d0,      // Coral plate
     }
   },
+  // =====================================
+  // Vibrant/Dark Key Themes (No White)
+  // =====================================
+  olive: {
+    name: 'Olive Military',
+    colors: {
+      alphaKeys: 0x8b9a6b,     // Olive green
+      modKeys: 0x6b7a4b,       // Dark olive
+      accentEsc: 0xd4a84b,     // Gold
+      accentEnter: 0xc45c3b,   // Rust red
+      accentSpace: 0xa3b38b,   // Light olive
+      keyboardCase: 0x5a6a4a,  // Dark green
+      caseDark: 0x4a5a3a,      // Darker green plate
+    }
+  },
+  burgundy: {
+    name: 'Burgundy Wine',
+    colors: {
+      alphaKeys: 0x8b4557,     // Burgundy
+      modKeys: 0x6b3547,       // Dark wine
+      accentEsc: 0xd4af37,     // Gold
+      accentEnter: 0xf5c77e,   // Champagne
+      accentSpace: 0xa86070,   // Rose burgundy
+      keyboardCase: 0x5a2537,  // Deep wine
+      caseDark: 0x4a1527,      // Darker wine plate
+    }
+  },
+  navy: {
+    name: 'Navy Blue',
+    colors: {
+      alphaKeys: 0x4a5a7a,     // Navy blue
+      modKeys: 0x3a4a6a,       // Darker navy
+      accentEsc: 0xf0c040,     // Gold
+      accentEnter: 0xe06050,   // Coral
+      accentSpace: 0x6080b0,   // Sky blue
+      keyboardCase: 0x2a3a5a,  // Deep navy
+      caseDark: 0x1a2a4a,      // Darker navy plate
+    }
+  },
+  charcoal: {
+    name: 'Charcoal',
+    colors: {
+      alphaKeys: 0x505560,     // Charcoal gray
+      modKeys: 0x404550,       // Darker charcoal
+      accentEsc: 0x50c8a0,     // Mint green
+      accentEnter: 0xf07060,   // Salmon
+      accentSpace: 0x707580,   // Steel gray
+      keyboardCase: 0x303540,  // Dark gray
+      caseDark: 0x202530,      // Near black plate
+    }
+  },
+  copper: {
+    name: 'Copper Bronze',
+    colors: {
+      alphaKeys: 0xb87848,     // Copper
+      modKeys: 0x986838,       // Bronze
+      accentEsc: 0x40a090,     // Teal
+      accentEnter: 0xd4a84b,   // Gold
+      accentSpace: 0xc89060,   // Light copper
+      keyboardCase: 0x785028,  // Dark bronze
+      caseDark: 0x584018,      // Darker bronze plate
+    }
+  },
 }
 
 export function getCurrentTheme() {

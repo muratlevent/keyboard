@@ -50,8 +50,9 @@ export class Keyboard {
     
     const geometry = new THREE.BoxGeometry(width, height, depth)
     
+    // Use theme colors for the case
     const baseMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
+      color: this.colors.keyboardCase,
       roughness: 0.2,
       metalness: 0.1,
       transmission: 0.1,
@@ -59,7 +60,7 @@ export class Keyboard {
     })
     
     const ribbedMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
+      color: this.colors.keyboardCase,
       roughness: 0.3,
       metalness: 0.1,
       bumpMap: texture,
