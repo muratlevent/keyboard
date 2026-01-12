@@ -52,6 +52,7 @@ export class Key {
     keycap.castShadow = true
     keycap.receiveShadow = true
     this.keycapMesh = keycap
+    this.originalColor = new THREE.Color(baseColor) // Store original color for lighting effect
     this.group.add(keycap)
     
     // Add legend on top
@@ -278,12 +279,26 @@ export class Key {
     if (this.isPressed) return
     this.isPressed = true
     this.targetY = this.originalY - 0.003
+    
+    // Lighten key color
+    if (this.keycapMesh && this.originalColor) {
+      const hsl = {}
+      this.originalColor.getHSL(hsl)
+      // Increase lightness by 20%
+      const lightenedColor = new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(1, hsl.l + 0.2))
+      this.keycapMesh.material.color.copy(lightenedColor)
+    }
   }
 
   release() {
     if (!this.isPressed) return
     this.isPressed = false
     this.targetY = this.originalY
+    
+    // Restore original color
+    if (this.keycapMesh && this.originalColor) {
+      this.keycapMesh.material.color.copy(this.originalColor)
+    }
   }
 
   update(deltaTime) {

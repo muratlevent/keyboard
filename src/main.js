@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { Keyboard } from './Keyboard.js'
 import { InputHandler } from './InputHandler.js'
+import { setLayout } from './SettingsManager.js'
 
 class App {
   constructor() {
@@ -19,6 +20,7 @@ class App {
     this.initGround()
     
     this.setupEventListeners()
+    this.setupUI()
     this.animate()
   }
 
@@ -188,6 +190,26 @@ class App {
     
     this.renderer.setSize(width, height)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  }
+
+  setupUI() {
+    // Panel toggle functionality
+    const panel = document.getElementById('settings-panel')
+    const toggleBtn = document.getElementById('panel-toggle')
+    
+    if (toggleBtn && panel) {
+      toggleBtn.addEventListener('click', () => {
+        panel.classList.toggle('collapsed')
+      })
+    }
+    
+    // OS Layout selector
+    const layoutSelector = document.getElementById('os-layout')
+    if (layoutSelector) {
+      layoutSelector.addEventListener('change', (e) => {
+        setLayout(e.target.value)
+      })
+    }
   }
 
   animate() {

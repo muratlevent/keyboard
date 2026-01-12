@@ -1,4 +1,5 @@
 import { getSoundManager } from './SoundManager.js'
+import { getKeyLabel } from './SettingsManager.js'
 
 export class InputHandler {
   constructor(keyboard) {
@@ -34,7 +35,7 @@ export class InputHandler {
     // Play switch sound
     this.soundManager.playKeySound()
     
-    // Update key indicator
+    // Update key indicator with OS-specific label
     this.showKeyIndicator(event.key, code)
   }
 
@@ -61,8 +62,8 @@ export class InputHandler {
       document.body.appendChild(indicator)
     }
     
-    // Display the key pressed
-    const displayKey = key.length === 1 ? key.toUpperCase() : key
+    // Display the key pressed using OS-specific label
+    const displayKey = getKeyLabel(code, key)
     indicator.textContent = `Key: ${displayKey}`
     indicator.classList.add('visible')
     

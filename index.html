@@ -9,20 +9,42 @@
 <body>
   <div id="app">
     <canvas id="keyboard-canvas"></canvas>
+    
+    <!-- Left Settings Panel -->
+    <aside class="settings-panel" id="settings-panel">
+      <button class="panel-toggle" id="panel-toggle" aria-label="Toggle settings panel">
+        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      
+      <div class="panel-content">
+        <h2 class="panel-title">Settings</h2>
+        
+        <div class="setting-group">
+          <label for="os-layout">Keyboard Layout</label>
+          <select id="os-layout">
+            <option value="macos" selected>macOS</option>
+            <option value="windows">Windows</option>
+          </select>
+        </div>
+        
+        <div class="setting-group">
+          <label for="switch-type">Switch Type</label>
+          <select id="switch-type">
+            <option value="red">Cherry MX Red</option>
+            <option value="blue" selected>Cherry MX Blue</option>
+            <option value="brown">Cherry MX Brown</option>
+            <option value="black">Cherry MX Black</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+    
     <div class="info-panel">
       <h1>Keyboard Simulator</h1>
       <p>Press any key on your keyboard</p>
       <p class="hint">Drag to rotate • Scroll to zoom</p>
-    </div>
-    
-    <div class="switch-selector">
-      <label for="switch-type">Switch Type</label>
-      <select id="switch-type">
-        <option value="red">Cherry MX Red</option>
-        <option value="blue" selected>Cherry MX Blue</option>
-        <option value="brown">Cherry MX Brown</option>
-        <option value="black">Cherry MX Black</option>
-      </select>
     </div>
   </div>
   <script type="module" src="/src/main.js"></script>
