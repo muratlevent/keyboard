@@ -413,7 +413,7 @@ export class Key {
       
       // Base opacity from brightness (0-100 -> 0.1-0.9)
       const baseOpacity = 0.1 + (settings.brightness / 100) * 0.8
-      const pressOpacity = this.isPressed ? 0.9 : baseOpacity
+      const pressOpacity = this.isPressed ? 0.95 : baseOpacity
       
       // Apply lighting effect
       switch (settings.effect) {
@@ -441,21 +441,36 @@ export class Key {
           this.underglowMesh.material.opacity = pressOpacity
           break
           
+        case 'reactive':
+          // Lights only on when pressed, uses custom color
+          this.underglowMesh.material.color.set(settings.color)
+          // Fade out effect
+          if (this.isPressed) {
+            this.reactiveGlow = 1.0
+          } else {
+            this.reactiveGlow = (this.reactiveGlow || 0) * 0.92 // Decay
+          }
+          this.underglowMesh.material.opacity = this.reactiveGlow * (settings.brightness / 100) * 0.9
+          break
+          
         case 'gemini':
-          // Dual-color gradient effect (blue ↔ cyan sparkle)
-          this.geminiTime = (this.geminiTime || Math.random() * 10) + deltaTime * 2
-          const geminiHue1 = 0.55 // Blue
-          const geminiHue2 = 0.48 // Cyan
-          const blend = (Math.sin(this.geminiTime + this.hue * 6.28) + 1) / 2
-          const geminiColor = new THREE.Color().setHSL(
-            geminiHue1 + (geminiHue2 - geminiHue1) * blend, 
-            0.85, 
-            0.55
-          )
+          // Smooth flowing wave animation (blue -> purple -> pink -> cyan)
+          this.geminiTime = (this.geminiTime || 0) + deltaTime * 0.8
+          
+          // Position-based phase offset for wave effect
+          const wavePhase = this.geminiTime + this.x * 0.5 + this.y * 0.3
+          
+          // Smooth hue transition through blue-purple-pink spectrum
+          const geminiHue = 0.55 + Math.sin(wavePhase) * 0.15 // 0.4 to 0.7 (cyan to magenta)
+          const geminiSat = 0.85 + Math.sin(wavePhase * 1.5) * 0.1
+          const geminiLight = 0.5 + Math.sin(wavePhase * 2) * 0.1
+          
+          const geminiColor = new THREE.Color().setHSL(geminiHue, geminiSat, geminiLight)
           this.underglowMesh.material.color.copy(geminiColor)
-          // Sparkle effect
-          const sparkle = Math.random() > 0.98 ? 0.95 : pressOpacity
-          this.underglowMesh.material.opacity = sparkle
+          
+          // Subtle intensity wave
+          const waveOpacity = baseOpacity * (0.8 + Math.sin(wavePhase * 1.5) * 0.2)
+          this.underglowMesh.material.opacity = this.isPressed ? 0.95 : waveOpacity
           break
           
         default:
