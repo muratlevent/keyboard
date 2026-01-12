@@ -94,10 +94,10 @@ export function getKeycapLabel(code, defaultLabel) {
 
 // Lighting Settings
 let lightingSettings = {
-  enabled: true,
-  brightness: 50,       // 0-100
-  color: '#00ffff',     // Hex color
-  effect: 'cycle'       // stable, pulse, cycle, gemini
+  enabled: false,        // Default off
+  brightness: 50,        // 0-100
+  color: '#00ffff',      // Hex color
+  effect: 'cycle'        // stable, pulse, cycle, gemini
 }
 
 export function getLightingSettings() {

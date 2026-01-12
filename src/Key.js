@@ -29,25 +29,25 @@ export class Key {
     // Get base color
     const baseColor = COLORS[this.colorName] || COLORS.modKeys
     
-    // mSA Taper ratios - narrower at top, wider at bottom
-    const topTaper = 0.78       // Top is 78% of bottom width - more pronounced taper
+    // mSA Taper offset - fixed reduction from base to top for consistent slopes
+    const taperOffset = 0.0022  // 2.2mm reduction on each side
     
     // Create mSA keycap with proper tapered sides
     let keycapGeometry
     if (this.code === 'Space') {
         keycapGeometry = this.createConvexKeycapGeometry(
-            keyWidth, keyDepth, baseHeight, topTaper
+            keyWidth, keyDepth, baseHeight, taperOffset
         )
     } else {
         keycapGeometry = this.createTaperedBoxGeometry(
-            keyWidth, keyDepth, baseHeight, topTaper
+            keyWidth, keyDepth, baseHeight, taperOffset
         )
     }
     
     const keycapMaterial = new THREE.MeshStandardMaterial({
       color: baseColor,
-      roughness: 0.52,
-      metalness: 0.02,
+      roughness: 0.85, // Matte finish, no more shine
+      metalness: 0.0,
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -58,9 +58,11 @@ export class Key {
     this.originalColor = new THREE.Color(baseColor) // Store original color for lighting effect
     this.group.add(keycap)
     
-    // Add legend on top
-    const legendWidth = keyWidth * topTaper * 0.88
-    const legendDepth = keyDepth * topTaper * 0.88
+    // Add legend on top (calculating top surface dimensions based on taperOffset)
+    const topWidth = Math.max(0.001, keyWidth - 2 * taperOffset)
+    const topDepth = Math.max(0.001, keyDepth - 2 * taperOffset)
+    const legendWidth = topWidth * 0.88
+    const legendDepth = topDepth * 0.88
     this.legendDimensions = { width: legendWidth, depth: legendDepth, height: baseHeight }
     
     if (this.label) {
@@ -83,14 +85,14 @@ export class Key {
     this.mesh = this.group
   }
 
-  createTaperedBoxGeometry(width, depth, height, topTaper) {
+  createTaperedBoxGeometry(width, depth, height, taperOffset) {
     // Create a box that tapers from bottom (full size) to top (smaller)
-    // This creates the characteristic mSA profile where sides angle inward
+    // This creates the characteristic mSA profile with consistent slope angles
     
     const hw = width / 2   // Half width at bottom
     const hd = depth / 2   // Half depth at bottom
-    const thw = hw * topTaper  // Half width at top
-    const thd = hd * topTaper  // Half depth at top
+    const thw = Math.max(0.001, hw - taperOffset)  // Fixed offset for consistent slope
+    const thd = Math.max(0.001, hd - taperOffset)  // Fixed offset for consistent slope
     const hh = height / 2
     
     // Define 8 vertices of tapered box
@@ -145,14 +147,14 @@ export class Key {
     return geometry
   }
 
-  createConvexKeycapGeometry(width, depth, height, topTaper) {
+  createConvexKeycapGeometry(width, depth, height, taperOffset) {
       // Create a CONVEX (rounded top) profile for the spacebar
       // Use ExtrudeGeometry to extrude the profile along the width (X axis)
 
       const shape = new THREE.Shape()
 
       const hd = depth / 2
-      const thd = (depth / 2) * topTaper // Top half depth
+      const thd = Math.max(0.001, hd - taperOffset)  // Fixed offset for consistent slope
 
       // Side view profile (YZ plane, looking from side)
       // Starting from bottom-right (back-bottom in local coordinates) clockwise
@@ -187,101 +189,79 @@ export class Key {
       const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings)
       
       // Center the geometry
-      // ExtrudeGeometry extrudes along Z by default. 
-      // Our shape is in XY plane (actually we designed it as YZ profile in mind but drew in XY)
-      // Let's re-orient:
-      // We drew: X = depth axis, Y = height axis.
-      // Extrusion depth = key width.
-      
-      // Rotate to align:
-      // Currently: Shape X is Depth, Shape Y is Height. Extrusion Z is Width.
-      // Target: World X is Width, World Y is Height, World Z is Depth.
-      
       geometry.center()
       
-      // After center():
-      // X axis is Depth-ish
-      // Y axis is Height
-      // Z axis is Width-ish
-      
-      // We want:
-      // X -> Width
-      // Y -> Height
-      // Z -> Depth 
-      
-      // So verify axes of created geometry:
-      // Our shape was drawn in "XY" plane of Shape.
-      //   Shape X: [-hd, hd] (Depth)
-      //   Shape Y: [0, height] (Height)
-      // Extrusion is along Z: [0, width] (Width)
-      
-      // So we have:
-      // Local X = Depth
-      // Local Y = Height
-      // Local Z = Width
-      
-      // We want to map:
-      // Local Z -> World X (Width)
-      // Local Y -> World Y (Height)
-      // Local X -> World Z (Depth)
-      
       geometry.rotateY(Math.PI / 2) 
-      // Now: 
-      // Old X (Depth) -> New Z (Depth)
-      // Old Z (Width) -> New X (Width)
       
       return geometry
   }
 
   createLegend(width, depth, height, baseColor) {
-    // Create solid canvas with color + legend
+    // Calculate proper aspect ratio for the legend
+    const aspectRatio = width / depth
+    
+    // Create canvas with proper aspect ratio to avoid distortion
     const canvas = document.createElement('canvas')
-    const size = 512
-    canvas.width = size
-    canvas.height = size
+    const baseSize = 512
+    // Make canvas match key aspect ratio for proper text scaling
+    if (aspectRatio >= 1) {
+      canvas.width = Math.round(baseSize * aspectRatio)
+      canvas.height = baseSize
+    } else {
+      canvas.width = baseSize
+      canvas.height = Math.round(baseSize / aspectRatio)
+    }
     const ctx = canvas.getContext('2d')
     
-    // Fill with solid keycap color
-    const colorHex = '#' + baseColor.toString(16).padStart(6, '0')
-    ctx.fillStyle = colorHex
-    ctx.fillRect(0, 0, size, size)
+    // Clear canvas for transparency (no background color)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
     
     // Determine text color based on keycap color
     const useDarkText = ['alphaKeys', 'modKeys', 'accentYellow'].includes(this.colorName)
-    const textColor = useDarkText ? 'rgba(80, 80, 85, 0.9)' : 'rgba(255, 255, 255, 0.95)'
+    const textColor = useDarkText ? 'rgba(70, 70, 75, 0.95)' : 'rgba(255, 255, 255, 0.98)'
     
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
-    // Font size based on label length
-    let fontSize = 160
-    if (this.label.length === 1) fontSize = 200
-    else if (this.label.length === 2) fontSize = 140
-    else if (this.label.length <= 4) fontSize = 90
-    else fontSize = 70
+    // Font size based on label length - relative to canvas height for proper scaling
+    const baseHeight = canvas.height
+    let fontSize = baseHeight * 0.4
+    if (this.label.length === 1) fontSize = baseHeight * 0.45
+    else if (this.label.length === 2) fontSize = baseHeight * 0.35
+    else if (this.label.length <= 4) fontSize = baseHeight * 0.22
+    else fontSize = baseHeight * 0.18
     
     // Use system font for clean look
     ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.fillText(this.label, size / 2, size / 2)
+    ctx.fillText(this.label, canvas.width / 2, canvas.height / 2)
     
-    // Create texture
+    // Create texture with proper settings for seamless appearance
     const texture = new THREE.CanvasTexture(canvas)
     texture.colorSpace = THREE.SRGBColorSpace
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    texture.generateMipmaps = false
     
-    // Create top face plane
+    // Create top face plane with matching dimensions
     const topGeometry = new THREE.PlaneGeometry(width, depth)
     
     const topMaterial = new THREE.MeshStandardMaterial({
       map: texture,
       roughness: 0.5,
       metalness: 0.02,
-      transparent: true,
+      transparent: true,     // Enable transparency
+      opacity: 1.0,
+      depthWrite: false,     // Don't write to depth buffer to avoid z-fighting issues with transparency
+      polygonOffset: true,   // Use polygon offset to prevent z-fighting
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     })
     
     const topFace = new THREE.Mesh(topGeometry, topMaterial)
     topFace.rotation.x = -Math.PI / 2
-    topFace.position.y = height + 0.0003
+    // Place legend flush with keycap top for seamless integration
+    topFace.position.y = height + 0.0001
     this.legendMesh = topFace
     this.legendCanvas = canvas
     this.legendBaseColor = baseColor
@@ -312,39 +292,50 @@ export class Key {
     
     this.label = newLabel
     
-    // Recreate the legend texture
+    // Calculate proper aspect ratio for the legend
+    const { width, depth } = this.legendDimensions
+    const aspectRatio = width / depth
+    
+    // Recreate the legend texture with proper aspect ratio
     const canvas = document.createElement('canvas')
-    const size = 512
-    canvas.width = size
-    canvas.height = size
+    const baseSize = 512
+    if (aspectRatio >= 1) {
+      canvas.width = Math.round(baseSize * aspectRatio)
+      canvas.height = baseSize
+    } else {
+      canvas.width = baseSize
+      canvas.height = Math.round(baseSize / aspectRatio)
+    }
     const ctx = canvas.getContext('2d')
     
-    // Fill with solid keycap color
-    const colorHex = '#' + this.legendBaseColor.toString(16).padStart(6, '0')
-    ctx.fillStyle = colorHex
-    ctx.fillRect(0, 0, size, size)
+    // Clear canvas for transparency (no background color)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
     
     // Determine text color
     const useDarkText = ['alphaKeys', 'modKeys', 'accentYellow'].includes(this.colorName)
-    const textColor = useDarkText ? 'rgba(80, 80, 85, 0.9)' : 'rgba(255, 255, 255, 0.95)'
+    const textColor = useDarkText ? 'rgba(70, 70, 75, 0.95)' : 'rgba(255, 255, 255, 0.98)'
     
     ctx.fillStyle = textColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
-    // Font size based on label length
-    let fontSize = 160
-    if (newLabel.length === 1) fontSize = 200
-    else if (newLabel.length === 2) fontSize = 140
-    else if (newLabel.length <= 4) fontSize = 90
-    else fontSize = 70
+    // Font size based on label length - relative to canvas height
+    const baseHeight = canvas.height
+    let fontSize = baseHeight * 0.4
+    if (newLabel.length === 1) fontSize = baseHeight * 0.45
+    else if (newLabel.length === 2) fontSize = baseHeight * 0.35
+    else if (newLabel.length <= 4) fontSize = baseHeight * 0.22
+    else fontSize = baseHeight * 0.18
     
     ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.fillText(newLabel, size / 2, size / 2)
+    ctx.fillText(newLabel, canvas.width / 2, canvas.height / 2)
     
-    // Update texture
+    // Update texture with proper filter settings
     const newTexture = new THREE.CanvasTexture(canvas)
     newTexture.colorSpace = THREE.SRGBColorSpace
+    newTexture.minFilter = THREE.LinearFilter
+    newTexture.magFilter = THREE.LinearFilter
+    newTexture.generateMipmaps = false
     
     // Dispose old texture and apply new
     if (this.legendMesh.material.map) {
