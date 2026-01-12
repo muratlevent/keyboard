@@ -1,14 +1,31 @@
 // 65% Keyboard Layout Data
 // Based on NuPhy Halo reference
 
+import { getThemeColors } from './SettingsManager.js'
+
+// Dynamic color getter based on current theme
+export function getColors() {
+  const theme = getThemeColors()
+  return {
+    alphaKeys: theme.alphaKeys,
+    modKeys: theme.modKeys,
+    accentTeal: theme.accentEsc,      // Escape key
+    accentOrange: theme.accentEnter,  // Enter key
+    accentYellow: theme.accentSpace,  // Spacebar
+    keyboardCase: theme.keyboardCase,
+    caseDark: theme.caseDark,
+  }
+}
+
+// Legacy COLORS export for backwards compatibility (uses default theme on first load)
 export const COLORS = {
-  alphaKeys: 0xf8f8f8,     // Warm white alphanumeric keys
-  modKeys: 0xb5bac0,       // Light gray modifiers (matching reference)
-  accentTeal: 0x4dd4c4,    // Mint/Teal Escape key
-  accentOrange: 0xe85d4c,  // Coral/Salmon Enter key
-  accentYellow: 0xf5c836,  // Golden Yellow Spacebar
-  keyboardCase: 0xf2f4f6,  // Off-white case
-  caseDark: 0xe5e7ea,      // Light gray plate
+  alphaKeys: 0xf8f8f8,
+  modKeys: 0xb5bac0,
+  accentTeal: 0x4dd4c4,
+  accentOrange: 0xe85d4c,
+  accentYellow: 0xf5c836,
+  keyboardCase: 0xf2f4f6,
+  caseDark: 0xe5e7ea,
 }
 
 // Key sizes in units (1 unit = standard key width ~19.05mm)

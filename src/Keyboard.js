@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Key } from './Key.js'
 import { 
   KEYBOARD_LAYOUT, 
-  COLORS, 
+  getColors, 
   KEY_UNIT, 
   KEYBOARD_WIDTH,
   KEYBOARD_HEIGHT,
@@ -13,6 +13,9 @@ export class Keyboard {
   constructor() {
     this.group = new THREE.Group()
     this.keys = new Map()
+    
+    // Get current theme colors
+    this.colors = getColors()
     
     // Case dimensions
     this.casePadding = 0.002       // Reduced padding around keys for snugger fit
@@ -154,7 +157,7 @@ export class Keyboard {
     }
     
     const sideMaterial = new THREE.MeshPhysicalMaterial({
-      color: COLORS.keyboardCase,
+      color: this.colors.keyboardCase,
       roughness: 0.15,
       metalness: 0.05,
       clearcoat: 0.3,
@@ -195,7 +198,7 @@ export class Keyboard {
     const depth = this.totalDepth
     
     const wallMaterial = new THREE.MeshStandardMaterial({
-      color: COLORS.keyboardCase,
+      color: this.colors.keyboardCase,
       roughness: 0.1,
       metalness: 0.05,
     })
@@ -234,7 +237,7 @@ export class Keyboard {
     
     const geometry = new THREE.BoxGeometry(width, this.plateHeight, depth)
     const material = new THREE.MeshPhysicalMaterial({
-      color: COLORS.caseDark,
+      color: this.colors.caseDark,
       roughness: 0.4,
       metalness: 0.7,
     })

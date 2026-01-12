@@ -9,7 +9,8 @@ import {
   setLightingBrightness, 
   setLightingColor, 
   setLightingEffect,
-  setDarkMode 
+  setDarkMode,
+  setTheme
 } from './SettingsManager.js'
 
 class App {
@@ -183,6 +184,32 @@ class App {
     this.inputHandler = new InputHandler(this.keyboard)
   }
 
+  rebuildKeyboard() {
+    // Remove old keyboard
+    if (this.keyboard) {
+      this.scene.remove(this.keyboard.getMesh())
+      // Dispose of old keyboard resources
+      this.keyboard.keys.forEach(key => {
+        if (key.keycapMesh) {
+          key.keycapMesh.geometry.dispose()
+          key.keycapMesh.material.dispose()
+        }
+        if (key.legendMesh) {
+          key.legendMesh.geometry.dispose()
+          key.legendMesh.material.dispose()
+          if (key.legendMesh.material.map) key.legendMesh.material.map.dispose()
+        }
+      })
+    }
+    
+    // Create new keyboard with new theme colors
+    this.keyboard = new Keyboard()
+    this.scene.add(this.keyboard.getMesh())
+    
+    // Re-attach input handler
+    this.inputHandler = new InputHandler(this.keyboard)
+  }
+
   initGround() {
     // Subtle reflective surface under keyboard
     const groundGeometry = new THREE.PlaneGeometry(3, 3)
@@ -233,6 +260,15 @@ class App {
       layoutSelector.addEventListener('change', (e) => {
         setLayout(e.target.value)
         this.keyboard.updateKeyLabels()
+      })
+    }
+    
+    // Theme selector
+    const themeSelector = document.getElementById('keyboard-theme')
+    if (themeSelector) {
+      themeSelector.addEventListener('change', (e) => {
+        setTheme(e.target.value)
+        this.rebuildKeyboard()
       })
     }
     

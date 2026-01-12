@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { KEY_UNIT, KEY_GAP, COLORS } from './KeyboardLayout.js'
+import { KEY_UNIT, KEY_GAP, getColors } from './KeyboardLayout.js'
 import { getKeycapLabel, getCurrentLayout, getLightingSettings } from './SettingsManager.js'
 
 export class Key {
@@ -24,22 +24,27 @@ export class Key {
     this.row = Math.floor(keyData.y) + 1 // Row for profile (1=top function row, 5=bottom spacebar row)
     
     this.group = new THREE.Group()
-    const baseColor = COLORS[this.colorName] || COLORS.alphaKeys
+    // Get current theme colors dynamically
+    const colors = getColors()
+    const baseColor = colors[this.colorName] || colors.alphaKeys
     
     // Create realistic keycap geometry with rounding, scoops, and row profile
     const keycapGeometry = this.createRealisticKeycapGeometry(
         keyWidth, keyDepth, baseHeight, taperOffset, this.row
     )
     
-    // Use MeshPhysicalMaterial for matte plastic appearance with uniform lighting
+    // Use MeshPhysicalMaterial for satin/eggshell plastic finish with edge highlights
+    // Based on reference keycap analysis: soft sheen, visible edge reflections
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: 0.65,          // Higher roughness for matte look (no glossy hotspots)
+      roughness: 0.45,          // Satin finish - between matte and glossy
       metalness: 0.0,           // Pure plastic, no metallic
-      clearcoat: 0.08,          // Minimal clearcoat to reduce specular highlights
-      clearcoatRoughness: 0.6,  // Rough clearcoat for diffuse reflections
-      reflectivity: 0.2,        // Lower reflectivity for uniform appearance
-      // Removed sheen properties to eliminate glossy edge highlights
+      clearcoat: 0.25,          // Moderate clearcoat for edge highlights
+      clearcoatRoughness: 0.35, // Semi-smooth clearcoat for soft reflections
+      reflectivity: 0.4,        // Moderate reflectivity for realism
+      sheen: 0.3,               // Soft sheen for edge glow effect
+      sheenRoughness: 0.4,      // Moderate sheen roughness
+      sheenColor: new THREE.Color(0xffffff), // White sheen for highlights
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -94,10 +99,10 @@ export class Key {
     const halfD = depth / 2
     const halfH = height / 2
 
-    // Enhanced parameters for realism inspired by keysim
-    const cornerRadius = 0.0018  // Larger radius for more visible rounded corners
-    const topEdgeRadius = 0.0012 // Larger radius for top horizontal edges
-    const scoopDepth = 0.0012    // Deeper cylindrical scoop for sculpted feel
+    // Enhanced parameters for realism - matching reference keycap
+    const cornerRadius = 0.0025  // Larger radius for very visible rounded corners (reference shows big rounds)
+    const topEdgeRadius = 0.0018 // Larger radius for top edge bevel/highlight
+    const scoopDepth = 0.0008    // Subtle scoop - reference shows mostly flat top
     
     // Row-based profile adjustment (inspired by keysim row angling)
     const rowHeightAdjust = {
@@ -286,13 +291,13 @@ export class Key {
     // Create top face plane with matching dimensions
     const topGeometry = new THREE.PlaneGeometry(width, depth)
     
-    // Use MeshPhysicalMaterial for consistency with matte keycap
+    // Use MeshPhysicalMaterial for consistency with satin keycap finish
     const topMaterial = new THREE.MeshPhysicalMaterial({
       map: texture,
-      roughness: 0.65,         // Match keycap roughness for uniform look
+      roughness: 0.45,         // Match keycap roughness for satin finish
       metalness: 0.0,
-      clearcoat: 0.05,         // Minimal clearcoat
-      clearcoatRoughness: 0.6,
+      clearcoat: 0.15,         // Subtle clearcoat to match keycap
+      clearcoatRoughness: 0.4,
       transparent: true,       // Enable transparency
       opacity: 1.0,
       depthWrite: false,       // Don't write to depth buffer to avoid z-fighting issues with transparency
