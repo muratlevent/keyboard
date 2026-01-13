@@ -21,11 +21,11 @@ export class Keyboard {
     this.casePadding = 0.002       // Reduced padding around keys for snugger fit
     this.caseBaseHeight = 0.014    // Height of case base
     this.plateHeight = 0.002       // Height of the mounting plate
-    this.wallHeight = 0.006        // Walls extend above base
+    this.wallHeight = 0.004        // Walls extend above base
     this.sidePanelThickness = 0.003 // Thin side panels
     
     // Total keyboard depth (Z axis) and width (X axis)
-    this.totalDepth = KEYBOARD_HEIGHT + this.casePadding * 2
+    this.totalDepth = KEYBOARD_HEIGHT + this.casePadding * 3
     this.totalWidth = KEYBOARD_WIDTH + this.casePadding * 2
     
     this.createCaseBase()
