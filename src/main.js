@@ -1,6 +1,10 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js'
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { Keyboard } from './Keyboard.js'
 import { InputHandler } from './InputHandler.js'
 import { 
@@ -30,6 +34,7 @@ class App {
     
     this.setupEventListeners()
     this.setupUI()
+    this.initPostProcessing()
     this.animate()
   }
 
@@ -73,9 +78,9 @@ class App {
     this.scene.add(ambient)
     this.sceneLights.push({ light: ambient, baseIntensity: 0.35 })
     
-    // Main key light (top-front-right) - warm
-    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2)
-    keyLight.position.set(0.4, 0.8, 0.5)
+    // Main key light (top-front-left) - warm, positioned to match reference
+    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.0)
+    keyLight.position.set(-0.3, 0.7, 0.4)
     keyLight.castShadow = true
     keyLight.shadow.mapSize.width = 2048
     keyLight.shadow.mapSize.height = 2048
@@ -86,7 +91,7 @@ class App {
     keyLight.shadow.camera.top = 0.5
     keyLight.shadow.camera.bottom = -0.5
     keyLight.shadow.bias = -0.0005
-    keyLight.shadow.radius = 2
+    keyLight.shadow.radius = 4  // Softer shadows to match reference
     this.scene.add(keyLight)
     this.sceneLights.push({ light: keyLight, baseIntensity: 1.2 })
     
@@ -247,6 +252,14 @@ class App {
     
     this.renderer.setSize(width, height)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    
+    // Resize post-processing
+    if (this.composer) {
+      this.composer.setSize(width, height)
+    }
+    if (this.ssaoPass) {
+      this.ssaoPass.setSize(width, height)
+    }
   }
 
   setupUI() {
@@ -353,6 +366,27 @@ class App {
     }
   }
 
+  initPostProcessing() {
+    // Create effect composer for post-processing
+    this.composer = new EffectComposer(this.renderer)
+    
+    // Render pass - renders the scene
+    const renderPass = new RenderPass(this.scene, this.camera)
+    this.composer.addPass(renderPass)
+    
+    // SSAO pass - adds ambient occlusion for contact shadows
+    this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight)
+    this.ssaoPass.kernelRadius = 0.012  // Small radius for subtle contact shadows
+    this.ssaoPass.minDistance = 0.0001
+    this.ssaoPass.maxDistance = 0.02
+    this.ssaoPass.output = SSAOPass.OUTPUT.Default
+    this.composer.addPass(this.ssaoPass)
+    
+    // Output pass - applies tone mapping and color space conversion
+    const outputPass = new OutputPass()
+    this.composer.addPass(outputPass)
+  }
+
   animate() {
     requestAnimationFrame(() => this.animate())
     
@@ -364,8 +398,8 @@ class App {
     // Update orbit controls
     this.controls.update()
     
-    // Render
-    this.renderer.render(this.scene, this.camera)
+    // Render with post-processing
+    this.composer.render()
   }
 }
 

@@ -35,16 +35,16 @@ export class Key {
     )
     
     // Use MeshPhysicalMaterial for plastic finish
-    // Sharp style is slightly more matte like vintage ABS/PBT
+    // Tuned for matte plastic look matching reference image
     const isSharp = style === 'sharp'
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: isSharp ? 0.6 : 0.45,
+      roughness: isSharp ? 0.8 : 0.75,       // Higher roughness for matte finish
       metalness: 0.0,
-      clearcoat: isSharp ? 0.1 : 0.25,
-      clearcoatRoughness: 0.4,
-      reflectivity: isSharp ? 0.3 : 0.4,
-      sheen: isSharp ? 0.2 : 0.3,
+      clearcoat: isSharp ? 0.02 : 0.05,      // Minimal clearcoat
+      clearcoatRoughness: 0.6,
+      reflectivity: 0.1,                      // Reduced reflectivity
+      sheen: 0,                               // No sheen for matte look
       sheenRoughness: 0.5,
       sheenColor: new THREE.Color(0xffffff),
     })
