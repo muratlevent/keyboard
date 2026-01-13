@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { KEY_UNIT, KEY_GAP, getColors } from './KeyboardLayout.js'
-import { getKeycapLabel, getCurrentLayout, getLightingSettings } from './SettingsManager.js'
+import { getKeycapLabel, getCurrentLayout, getLightingSettings, getKeycapStyle } from './SettingsManager.js'
 
 export class Key {
   constructor(keyData) {
@@ -28,23 +28,25 @@ export class Key {
     const colors = getColors()
     const baseColor = colors[this.colorName] || colors.alphaKeys
     
-    // Create realistic keycap geometry with rounding, scoops, and row profile
+    // Create realistic keycap geometry
+    const style = getKeycapStyle()
     const keycapGeometry = this.createRealisticKeycapGeometry(
-        keyWidth, keyDepth, baseHeight, taperOffset, this.row
+        keyWidth, keyDepth, baseHeight, taperOffset, this.row, style
     )
     
-    // Use MeshPhysicalMaterial for satin/eggshell plastic finish with edge highlights
-    // Based on reference keycap analysis: soft sheen, visible edge reflections
+    // Use MeshPhysicalMaterial for plastic finish
+    // Sharp style is slightly more matte like vintage ABS/PBT
+    const isSharp = style === 'sharp'
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: baseColor,
-      roughness: 0.45,          // Satin finish - between matte and glossy
-      metalness: 0.0,           // Pure plastic, no metallic
-      clearcoat: 0.25,          // Moderate clearcoat for edge highlights
-      clearcoatRoughness: 0.35, // Semi-smooth clearcoat for soft reflections
-      reflectivity: 0.4,        // Moderate reflectivity for realism
-      sheen: 0.3,               // Soft sheen for edge glow effect
-      sheenRoughness: 0.4,      // Moderate sheen roughness
-      sheenColor: new THREE.Color(0xffffff), // White sheen for highlights
+      roughness: isSharp ? 0.6 : 0.45,
+      metalness: 0.0,
+      clearcoat: isSharp ? 0.1 : 0.25,
+      clearcoatRoughness: 0.4,
+      reflectivity: isSharp ? 0.3 : 0.4,
+      sheen: isSharp ? 0.2 : 0.3,
+      sheenRoughness: 0.5,
+      sheenColor: new THREE.Color(0xffffff),
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -89,8 +91,9 @@ export class Key {
     this.mesh = this.group
   }
 
-  createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3) {
-    const segments = 20 // More segments for smoother curves
+  createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3, style = 'rounded') {
+    const isSharp = style === 'sharp'
+    const segments = isSharp ? 8 : 20 // Sharp style needs fewer segments for hard edges
     const geometry = new THREE.BoxGeometry(width, height, depth, segments, segments, segments)
     const position = geometry.attributes.position
     const vector = new THREE.Vector3()
@@ -99,18 +102,18 @@ export class Key {
     const halfD = depth / 2
     const halfH = height / 2
 
-    // Enhanced parameters for realism - matching reference keycap
-    const cornerRadius = 0.0025  // Larger radius for very visible rounded corners (reference shows big rounds)
-    const topEdgeRadius = 0.0018 // Larger radius for top edge bevel/highlight
-    const scoopDepth = 0.0008    // Subtle scoop - reference shows mostly flat top
+    // Parameters based on style
+    const cornerRadius = isSharp ? 0.0004 : 0.0025
+    const topEdgeRadius = isSharp ? 0.0006 : 0.0018
+    const scoopDepth = isSharp ? 0.0012 : 0.0008 // Vintage keys often have deeper scoops
     
-    // Row-based profile adjustment (inspired by keysim row angling)
+    // Row-based profile adjustment
     const rowHeightAdjust = {
-      1: 0.0006,   // Number row (y=0) - slightly taller
-      2: 0.0003,   // QWERTY row (y=1)
-      3: 0.0,      // Home row (y=2) - baseline
-      4: -0.0002,  // Shift row (y=3) - slightly lower
-      5: -0.0004,  // Bottom row (y=4) - lowest
+      1: 0.0006,   
+      2: 0.0003,   
+      3: 0.0,      
+      4: -0.0002,  
+      5: -0.0004,  
     }
     const heightAdjust = rowHeightAdjust[row] || 0
 
@@ -145,28 +148,41 @@ export class Key {
         const innerD = currentD - cornerRadius
         
         if (absX > innerW && absZ > innerD) {
-            // Vertex is in a corner region - round it
+            // Vertex is in a corner region
             const dx = absX - innerW
             const dz = absZ - innerD
-            const dist = Math.sqrt(dx * dx + dz * dz)
-            if (dist > cornerRadius) {
-                const scale = cornerRadius / dist
-                x = (innerW + dx * scale) * Math.sign(x)
-                z = (innerD + dz * scale) * Math.sign(z)
+            
+            if (isSharp) {
+                // 2.1 Sharp Corner Chamfer (The "Inverse Triangle" look)
+                // Instead of a curve, we cut a flat facet (dx + dz > radius)
+                const chamferRadius = cornerRadius * 1.5 // Slightly larger for visibility
+                if (dx + dz > chamferRadius) {
+                    const over = (dx + dz) - chamferRadius
+                    // Push vertex back along the 45-degree angle
+                    const push = over / 2
+                    x = (absX - push) * Math.sign(x)
+                    z = (absZ - push) * Math.sign(z)
+                }
+            } else {
+                // 2.2 Rounded Corners (Original behavior)
+                const dist = Math.sqrt(dx * dx + dz * dz)
+                if (dist > cornerRadius) {
+                    const scale = cornerRadius / dist
+                    x = (innerW + dx * scale) * Math.sign(x)
+                    z = (innerD + dz * scale) * Math.sign(z)
+                }
             }
         }
 
         // 3. Top Edge Rounding & Scoop
         if (y > halfH - topEdgeRadius * 2) {
-            // Soften the top side edges
             const dy = halfH - y
             if (absX > currentW - topEdgeRadius) {
                 const dx = absX - (currentW - topEdgeRadius)
                 const dist = Math.sqrt(dx * dx + (topEdgeRadius - dy) * (topEdgeRadius - dy))
-                if (dist > topEdgeRadius && y > halfH - topEdgeRadius) {
+                if (dist > topEdgeRadius && y > halfH - topEdgeRadius && !isSharp) {
                     const scale = topEdgeRadius / dist
-                    // We don't want to bring Y down too much, just round it
-                    // y = halfH - topEdgeRadius + (topEdgeRadius - dy) * scale
+                    // Skip for sharp style to maintain crisp edges
                 }
             }
             
@@ -235,50 +251,81 @@ export class Key {
     
     const canvasHeight = canvas.height
     const canvasWidth = canvas.width
+
+    const isSharp = getKeycapStyle() === 'sharp'
+    
+    // Add subtle right/bottom edge highlights for sharp style
+    if (isSharp) {
+      ctx.save()
+      // Draw a very subtle highlight on the right and bottom edges
+      // This gives the impression of light catching the sharp interior edges
+      ctx.lineWidth = canvasWidth * 0.015
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+      ctx.beginPath()
+      // Bottom edge
+      ctx.moveTo(canvasWidth * 0.1, canvasHeight - ctx.lineWidth/2)
+      ctx.lineTo(canvasWidth * 0.9, canvasHeight - ctx.lineWidth/2)
+      // Right edge
+      ctx.moveTo(canvasWidth - ctx.lineWidth/2, canvasHeight * 0.1)
+      ctx.lineTo(canvasWidth - ctx.lineWidth/2, canvasHeight * 0.9)
+      ctx.stroke()
+      ctx.restore()
+    }
     
     // Check if this is a dual-legend key (has shiftLabel)
+    
     if (this.shiftLabel) {
-      // Dual-legend layout: shift character on top, main character below
-      // Following the reference image style
-      
-      // Shift character (smaller, positioned at top-center)
-      const shiftFontSize = canvasHeight * 0.32
-      ctx.font = `600 ${shiftFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(this.shiftLabel, canvasWidth / 2, canvasHeight * 0.30)
-      
-      // Main character (larger, positioned at bottom-center)
-      const mainFontSize = canvasHeight * 0.38
-      ctx.font = `600 ${mainFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.68)
-      
-    } else {
-      // Single legend - centered
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      
-      // Font size based on label length and type
-      // Unicode symbols (1 char) get larger size for visibility
-      let fontSize = canvasHeight * 0.4
-      let fontWeight = '700' // Bolder for better visibility
-      
-      if (this.label.length === 1) {
-        // Single character - large and bold (includes Unicode symbols like ⌘, ⌥, ⇧, ↵)
-        fontSize = canvasHeight * 0.55
-      } else if (this.label.length === 2) {
-        // Two chars like Fn, PgUp abbreviations
-        fontSize = canvasHeight * 0.4
-      } else if (this.label.length <= 4) {
-        // Short words like Home, End, PgUp, PgDn
-        fontSize = canvasHeight * 0.28
+      if (isSharp) {
+        // Sharp/Vintage dual-legend: both top-aligned, shift on left
+        const fontSize = canvasHeight * 0.22
+        ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+        const padding = canvasWidth * 0.08
+        ctx.fillText(this.shiftLabel, padding, padding)
+        ctx.fillText(this.label, padding, padding + fontSize * 1.3)
       } else {
-        // Longer words - shouldn't happen often now with macOS symbols
-        fontSize = canvasHeight * 0.22
+        // Dual-legend layout: shift character on top, main character below
+        const shiftFontSize = canvasHeight * 0.32
+        ctx.font = `600 ${shiftFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(this.shiftLabel, canvasWidth / 2, canvasHeight * 0.30)
+        
+        const mainFontSize = canvasHeight * 0.38
+        ctx.font = `600 ${mainFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.68)
       }
-      
-      ctx.font = `${fontWeight} ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.label, canvasWidth / 2, canvasHeight / 2)
+    } else {
+      if (isSharp) {
+        // Sharp/Vintage single legend: Top-left, smaller font
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+        const padding = canvasWidth * 0.08
+        const fontSize = this.label.length === 1 ? canvasHeight * 0.35 : canvasHeight * 0.22
+        ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.label, padding, padding)
+      } else {
+        // Single legend - centered
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        
+        let fontSize = canvasHeight * 0.4
+        let fontWeight = '700'
+        
+        if (this.label.length === 1) {
+          fontSize = canvasHeight * 0.55
+        } else if (this.label.length === 2) {
+          fontSize = canvasHeight * 0.4
+        } else if (this.label.length <= 4) {
+          fontSize = canvasHeight * 0.28
+        } else {
+          fontSize = canvasHeight * 0.22
+        }
+        
+        ctx.font = `${fontWeight} ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.label, canvasWidth / 2, canvasHeight / 2)
+      }
     }
     
     // Create texture with proper settings for seamless appearance
@@ -365,26 +412,37 @@ export class Key {
     
     // =====================================
     // Draw legend text
-    // =====================================
+    const isSharp = getKeycapStyle() === 'sharp'
     
     // Determine text color
     const useDarkText = ['alphaKeys', 'modKeys', 'accentYellow'].includes(this.colorName)
     const textColor = useDarkText ? 'rgba(60, 60, 65, 0.92)' : 'rgba(255, 255, 255, 0.95)'
     
     ctx.fillStyle = textColor
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    
-    // Font size based on label length - relative to canvas height
     const canvasHeight = canvas.height
-    let fontSize = canvasHeight * 0.4
-    if (newLabel.length === 1) fontSize = canvasHeight * 0.45
-    else if (newLabel.length === 2) fontSize = canvasHeight * 0.35
-    else if (newLabel.length <= 4) fontSize = canvasHeight * 0.22
-    else fontSize = canvasHeight * 0.18
+    const canvasWidth = canvas.width
     
-    ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.fillText(newLabel, canvas.width / 2, canvas.height / 2)
+    if (isSharp) {
+      // Vitange/Sharp style: Top-left
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'top'
+      const padding = canvasWidth * 0.08
+      const fontSize = newLabel.length === 1 ? canvasHeight * 0.35 : canvasHeight * 0.22
+      ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(newLabel, padding, padding)
+    } else {
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      let fontSize = canvasHeight * 0.4
+      if (newLabel.length === 1) fontSize = canvasHeight * 0.45
+      else if (newLabel.length === 2) fontSize = canvasHeight * 0.35
+      else if (newLabel.length <= 4) fontSize = canvasHeight * 0.22
+      else fontSize = canvasHeight * 0.18
+      
+      ctx.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(newLabel, canvasWidth / 2, canvasHeight / 2)
+    }
     
     // Update texture with proper filter settings
     const newTexture = new THREE.CanvasTexture(canvas)

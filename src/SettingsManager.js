@@ -2,6 +2,18 @@
 
 let currentLayout = 'macos' // Default to macOS
 let currentTheme = 'default' // Default theme
+let currentKeycapStyle = 'rounded' // Default keycap style ('rounded' or 'sharp')
+
+export function getKeycapStyle() {
+  return currentKeycapStyle
+}
+
+export function setKeycapStyle(style) {
+  if (['rounded', 'sharp'].includes(style)) {
+    currentKeycapStyle = style
+    window.dispatchEvent(new CustomEvent('stylechange', { detail: style }))
+  }
+}
 
 // =====================================
 // Keyboard Color Themes
