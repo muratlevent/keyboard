@@ -30,7 +30,7 @@ export const COLORS = {
 
 // Key sizes in units (1 unit = standard key width ~19.05mm)
 export const KEY_UNIT = 0.019  // 19mm per unit
-export const KEY_GAP = 0.0015  // 1.5mm gap between keys
+export const KEY_GAP = 0.0007  // 0.7mm gap between keys
 
 // Full 65% layout with proper labels and shift labels for dual-legend keys
 export const KEYBOARD_LAYOUT = [

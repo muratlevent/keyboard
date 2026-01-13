@@ -232,13 +232,13 @@ export class Keyboard {
   }
 
   createPlate() {
-    // Dark mounting plate where keys sit
+    // Dark mounting plate where keys sit - ALWAYS black regardless of theme
     const width = KEYBOARD_WIDTH + this.casePadding - 0.002
     const depth = KEYBOARD_HEIGHT + this.casePadding - 0.002
     
     const geometry = new THREE.BoxGeometry(width, this.plateHeight, depth)
     const material = new THREE.MeshPhysicalMaterial({
-      color: this.colors.caseDark,
+      color: 0x1a1a1a,  // Always black - makes keys more visible
       roughness: 0.4,
       metalness: 0.7,
     })
