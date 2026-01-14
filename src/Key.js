@@ -35,18 +35,38 @@ export class Key {
     )
     
     // Use MeshPhysicalMaterial for plastic finish
-    // Tuned for matte plastic look matching reference image
+    // Super-realistic with transmission, IOR, and per-key color variation
     const isSharp = style === 'sharp'
+    
+    // Subtle per-key color variation for realism (no two keys exactly alike)
+    const colorVariation = new THREE.Color(baseColor)
+    const hsl = { h: 0, s: 0, l: 0 }
+    colorVariation.getHSL(hsl)
+    // Add tiny random variations to saturation and lightness
+    const satVar = (Math.random() - 0.5) * 0.015  // ±0.75% saturation
+    const lightVar = (Math.random() - 0.5) * 0.02  // ±1% lightness
+    colorVariation.setHSL(
+      hsl.h,
+      Math.max(0, Math.min(1, hsl.s + satVar)),
+      Math.max(0.1, Math.min(0.95, hsl.l + lightVar))
+    )
+    
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
-      color: baseColor,
-      roughness: isSharp ? 0.8 : 0.75,       // Higher roughness for matte finish
+      color: colorVariation,
+      roughness: isSharp ? 0.72 : 0.65,       // Slightly less rough for subtle highlights
       metalness: 0.0,
-      clearcoat: isSharp ? 0.02 : 0.05,      // Minimal clearcoat
-      clearcoatRoughness: 0.6,
-      reflectivity: 0.1,                      // Reduced reflectivity
-      sheen: 0,                               // No sheen for matte look
-      sheenRoughness: 0.5,
+      clearcoat: isSharp ? 0.03 : 0.08,       // Thin clearcoat for plastic sheen
+      clearcoatRoughness: 0.5,
+      reflectivity: 0.15,
+      ior: 1.46,                               // Index of refraction for plastic (acrylic/ABS)
+      thickness: 0.002,                        // Physical thickness for transmission
+      transmission: 0.02,                      // Very subtle translucency for plastic depth
+      attenuationColor: colorVariation,        // Light absorption color
+      attenuationDistance: 0.05,
+      sheen: 0.05,                             // Subtle fiber-like sheen
+      sheenRoughness: 0.8,
       sheenColor: new THREE.Color(0xffffff),
+      envMapIntensity: 0.4,                    // Subtle environment reflections
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
@@ -54,7 +74,7 @@ export class Key {
     keycap.castShadow = true
     keycap.receiveShadow = true
     this.keycapMesh = keycap
-    this.originalColor = new THREE.Color(baseColor)
+    this.originalColor = new THREE.Color(colorVariation)
     this.group.add(keycap)
     
     // Add legend on top (calculating top surface dimensions based on taperOffset)

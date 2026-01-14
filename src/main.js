@@ -5,6 +5,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js'
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { Keyboard } from './Keyboard.js'
 import { InputHandler } from './InputHandler.js'
 import { 
@@ -73,33 +76,62 @@ class App {
     // Store lights for dynamic intensity control
     this.sceneLights = []
     
-    // Ambient light
-    const ambient = new THREE.AmbientLight(0xffffff, 0.35)
+    // Reduced ambient for more dramatic shadows
+    const ambient = new THREE.AmbientLight(0xffffff, 0.25)
     this.scene.add(ambient)
-    this.sceneLights.push({ light: ambient, baseIntensity: 0.35 })
+    this.sceneLights.push({ light: ambient, baseIntensity: 0.25 })
     
     // Main key light (top-front-left) - warm, positioned to match reference
-    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.0)
-    keyLight.position.set(-0.3, 0.7, 0.4)
+    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2)
+    keyLight.position.set(-0.35, 0.8, 0.45)
     keyLight.castShadow = true
-    keyLight.shadow.mapSize.width = 2048
-    keyLight.shadow.mapSize.height = 2048
+    keyLight.shadow.mapSize.width = 4096  // High-res shadows
+    keyLight.shadow.mapSize.height = 4096
     keyLight.shadow.camera.near = 0.1
     keyLight.shadow.camera.far = 3
     keyLight.shadow.camera.left = -0.5
     keyLight.shadow.camera.right = 0.5
     keyLight.shadow.camera.top = 0.5
     keyLight.shadow.camera.bottom = -0.5
-    keyLight.shadow.bias = -0.0005
-    keyLight.shadow.radius = 4  // Softer shadows to match reference
+    keyLight.shadow.bias = -0.0003
+    keyLight.shadow.normalBias = 0.001  // Reduces shadow acne
+    keyLight.shadow.radius = 3  // Crisp but not hard shadows
     this.scene.add(keyLight)
     this.sceneLights.push({ light: keyLight, baseIntensity: 1.2 })
     
-    // Fill light (left side) - cool
-    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5)
+    // Fill light (left side) - cool, with soft shadows
+    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.4)
     fillLight.position.set(-0.5, 0.4, 0.3)
+    fillLight.castShadow = true
+    fillLight.shadow.mapSize.width = 2048
+    fillLight.shadow.mapSize.height = 2048
+    fillLight.shadow.camera.near = 0.1
+    fillLight.shadow.camera.far = 2
+    fillLight.shadow.camera.left = -0.5
+    fillLight.shadow.camera.right = 0.5
+    fillLight.shadow.camera.top = 0.5
+    fillLight.shadow.camera.bottom = -0.5
+    fillLight.shadow.bias = -0.0003
+    fillLight.shadow.radius = 6  // Very soft secondary shadows
     this.scene.add(fillLight)
-    this.sceneLights.push({ light: fillLight, baseIntensity: 0.5 })
+    this.sceneLights.push({ light: fillLight, baseIntensity: 0.4 })
+    
+    // Secondary key light from right for realistic multi-directional shadows
+    const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 0.35)
+    secondaryLight.position.set(0.5, 0.6, 0.3)
+    secondaryLight.castShadow = true
+    secondaryLight.shadow.mapSize.width = 2048
+    secondaryLight.shadow.mapSize.height = 2048
+    secondaryLight.shadow.camera.near = 0.1
+    secondaryLight.shadow.camera.far = 2
+    secondaryLight.shadow.camera.left = -0.5
+    secondaryLight.shadow.camera.right = 0.5
+    secondaryLight.shadow.camera.top = 0.5
+    secondaryLight.shadow.camera.bottom = -0.5
+    secondaryLight.shadow.bias = -0.0003
+    secondaryLight.shadow.radius = 5
+    this.scene.add(secondaryLight)
+    this.sceneLights.push({ light: secondaryLight, baseIntensity: 0.35 })
     
     // Rim light (back-right) - accent
     const rimLight = new THREE.DirectionalLight(0xffd4c4, 0.6)
@@ -260,6 +292,12 @@ class App {
     if (this.ssaoPass) {
       this.ssaoPass.setSize(width, height)
     }
+    if (this.bloomPass) {
+      this.bloomPass.setSize(width, height)
+    }
+    if (this.smaaPass) {
+      this.smaaPass.setSize(width, height)
+    }
   }
 
   setupUI() {
@@ -374,13 +412,59 @@ class App {
     const renderPass = new RenderPass(this.scene, this.camera)
     this.composer.addPass(renderPass)
     
-    // SSAO pass - adds ambient occlusion for contact shadows
+    // Enhanced SSAO pass - stronger ambient occlusion for realistic contact shadows
     this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight)
-    this.ssaoPass.kernelRadius = 0.012  // Small radius for subtle contact shadows
-    this.ssaoPass.minDistance = 0.0001
-    this.ssaoPass.maxDistance = 0.02
+    this.ssaoPass.kernelRadius = 0.025  // Larger radius for more visible AO
+    this.ssaoPass.minDistance = 0.00005
+    this.ssaoPass.maxDistance = 0.03
     this.ssaoPass.output = SSAOPass.OUTPUT.Default
     this.composer.addPass(this.ssaoPass)
+    
+    // Subtle bloom for realistic light glow on bright edges
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.15,   // Bloom strength - very subtle
+      0.4,    // Radius
+      0.9     // Threshold - only brightest areas
+    )
+    this.bloomPass = bloomPass
+    this.composer.addPass(bloomPass)
+    
+    // SMAA for high-quality anti-aliasing
+    const smaaPass = new SMAAPass(window.innerWidth, window.innerHeight)
+    this.smaaPass = smaaPass
+    this.composer.addPass(smaaPass)
+    
+    // Custom vignette shader for photographic depth
+    const vignetteShader = {
+      uniforms: {
+        'tDiffuse': { value: null },
+        'darkness': { value: 0.4 },
+        'offset': { value: 1.2 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float darkness;
+        uniform float offset;
+        varying vec2 vUv;
+        void main() {
+          vec4 texel = texture2D(tDiffuse, vUv);
+          vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
+          float vignette = 1.0 - dot(uv, uv);
+          vignette = clamp(pow(vignette, darkness), 0.0, 1.0);
+          gl_FragColor = vec4(texel.rgb * (0.85 + 0.15 * vignette), texel.a);
+        }
+      `
+    }
+    const vignettePass = new ShaderPass(vignetteShader)
+    this.composer.addPass(vignettePass)
     
     // Output pass - applies tone mapping and color space conversion
     const outputPass = new OutputPass()
