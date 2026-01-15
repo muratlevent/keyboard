@@ -1,6 +1,76 @@
 import * as THREE from 'three'
 import { KEY_UNIT, KEY_GAP, getColors } from './KeyboardLayout.js'
-import { getKeycapLabel, getCurrentLayout, getLightingSettings, getKeycapStyle } from './SettingsManager.js'
+import { getKeycapLabel, getCurrentLayout, getKeycapStyle } from './SettingsManager.js'
+
+// Material cache for performance - keyed by colorHex_style
+const materialCache = new Map()
+
+// Geometry cache for performance - keyed by dimensions + style + spacebar flag
+const geometryCache = new Map()
+
+// Shared underglow material (reused across all keys)
+let sharedUnderglowMaterial = null
+
+// Clear all caches (call on theme/style change to prevent memory leaks)
+export function clearKeyCaches() {
+  // Dispose materials
+  materialCache.forEach(material => {
+    material.dispose()
+  })
+  materialCache.clear()
+  
+  // Dispose geometries
+  geometryCache.forEach(geometry => {
+    geometry.dispose()
+  })
+  geometryCache.clear()
+  
+  // Reset shared underglow
+  if (sharedUnderglowMaterial) {
+    sharedUnderglowMaterial.dispose()
+    sharedUnderglowMaterial = null
+  }
+}
+
+function getSharedUnderglowMaterial() {
+  if (!sharedUnderglowMaterial) {
+    sharedUnderglowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+    })
+  }
+  return sharedUnderglowMaterial.clone()
+}
+
+function getKeycapMaterial(baseColor, isSharp) {
+  // Create unique cache key based on color and style
+  const colorHex = baseColor.toString(16).padStart(6, '0')
+  const cacheKey = `${colorHex}_${isSharp ? 'sharp' : 'rounded'}`
+  
+  if (materialCache.has(cacheKey)) {
+    return materialCache.get(cacheKey).clone()
+  }
+  
+  const baseRoughness = isSharp ? 0.55 : 0.48
+  
+  const material = new THREE.MeshPhysicalMaterial({
+    color: baseColor,
+    roughness: baseRoughness,
+    metalness: 0.0,
+    clearcoat: isSharp ? 0.15 : 0.25,
+    clearcoatRoughness: 0.35,
+    reflectivity: 0.35,
+    ior: 1.49,
+    envMapIntensity: 0.8,
+    specularIntensity: 0.6,
+    specularColor: new THREE.Color(0xffffff),
+  })
+  
+  materialCache.set(cacheKey, material)
+  return material.clone()
+}
 
 export class Key {
   constructor(keyData) {
@@ -29,59 +99,50 @@ export class Key {
     const colors = getColors()
     const baseColor = colors[this.colorName] || colors.alphaKeys
     
-    // Create realistic keycap geometry
+    // Create realistic keycap geometry (with caching for performance)
     const style = getKeycapStyle()
-    const keycapGeometry = this.createRealisticKeycapGeometry(
-        keyWidth, keyDepth, baseHeight, taperOffset, this.row, style
-    )
+    const isSpacebar = this.code === 'Space'
     
-    // Use MeshPhysicalMaterial for plastic finish
-    // Extremely realistic with enhanced reflections and plastic properties
+    // Generate cache key based on dimensions that affect geometry
+    const geomCacheKey = `${keyWidth.toFixed(4)}_${keyDepth.toFixed(4)}_${this.row}_${style}_${isSpacebar ? 'space' : 'std'}`
+    
+    let keycapGeometry
+    if (geometryCache.has(geomCacheKey)) {
+      keycapGeometry = geometryCache.get(geomCacheKey)
+    } else {
+      keycapGeometry = this.createRealisticKeycapGeometry(
+        keyWidth, keyDepth, baseHeight, taperOffset, this.row, style
+      )
+      geometryCache.set(geomCacheKey, keycapGeometry)
+    }
+    
+    // Use shared material factory for better performance
     const isSharp = style === 'sharp'
     
-    // Subtle per-key color variation for realism (no two keys exactly alike)
-    const colorVariation = new THREE.Color(baseColor)
+    // Get cached material (cloned for per-key modifications)
+    const keycapMaterial = getKeycapMaterial(baseColor, isSharp)
+    
+    // Apply subtle per-key variations for realism
     const hsl = { h: 0, s: 0, l: 0 }
-    colorVariation.getHSL(hsl)
-    // Add tiny random variations to saturation and lightness
-    const satVar = (Math.random() - 0.5) * 0.02   // ±1% saturation
-    const lightVar = (Math.random() - 0.5) * 0.025 // ±1.25% lightness
-    colorVariation.setHSL(
+    keycapMaterial.color.getHSL(hsl)
+    const satVar = (Math.random() - 0.5) * 0.02
+    const lightVar = (Math.random() - 0.5) * 0.025
+    keycapMaterial.color.setHSL(
       hsl.h,
       Math.max(0, Math.min(1, hsl.s + satVar)),
       Math.max(0.1, Math.min(0.95, hsl.l + lightVar))
     )
     
-    // Add subtle roughness variation per key for realistic manufacturing differences
-    const roughnessVar = (Math.random() - 0.5) * 0.06  // ±3% roughness variation
-    const baseRoughness = isSharp ? 0.55 : 0.48
-    
-    const keycapMaterial = new THREE.MeshPhysicalMaterial({
-      color: colorVariation,
-      roughness: Math.max(0.35, Math.min(0.75, baseRoughness + roughnessVar)),
-      metalness: 0.0,
-      clearcoat: isSharp ? 0.15 : 0.25,      // Enhanced clearcoat for plastic sheen
-      clearcoatRoughness: 0.35,
-      reflectivity: 0.35,                     // Stronger reflections
-      ior: 1.49,                              // IOR for PBT plastic
-      thickness: 0.003,
-      transmission: 0.015,                    // Subtle translucency
-      attenuationColor: colorVariation,
-      attenuationDistance: 0.04,
-      sheen: 0.08,                            // Subtle sheen for plastic fiber effect
-      sheenRoughness: 0.6,
-      sheenColor: new THREE.Color(0xffffff),
-      envMapIntensity: 0.8,                   // Strong environment reflections
-      specularIntensity: 0.6,                 // Enhanced specular highlights
-      specularColor: new THREE.Color(0xffffff),
-    })
+    // Subtle roughness variation
+    const roughnessVar = (Math.random() - 0.5) * 0.06
+    keycapMaterial.roughness = Math.max(0.35, Math.min(0.75, keycapMaterial.roughness + roughnessVar))
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
     keycap.position.y = 0 // Geometry is already centered/positioned in creator
     keycap.castShadow = true
     keycap.receiveShadow = true
     this.keycapMesh = keycap
-    this.originalColor = new THREE.Color(colorVariation)
+    this.originalColor = keycapMaterial.color.clone()
     this.group.add(keycap)
     
     // Add legend on top (calculating top surface dimensions based on taperOffset)
@@ -120,7 +181,8 @@ export class Key {
 
   createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3, style = 'rounded') {
     const isSharp = style === 'sharp'
-    const segments = isSharp ? 8 : 20 // Sharp style needs fewer segments for hard edges
+    // Optimized segments: 12 for rounded (was 20), 6 for sharp (was 8)
+    const segments = isSharp ? 6 : 12
     const geometry = new THREE.BoxGeometry(width, height, depth, segments, segments, segments)
     const position = geometry.attributes.position
     const vector = new THREE.Vector3()
@@ -444,13 +506,8 @@ export class Key {
     // Create a larger glow plane that extends beyond keycap edges for smooth light bleed
     const glowGeometry = new THREE.PlaneGeometry(width * 1.15, depth * 1.15)
     
-    // Use MeshBasicMaterial with soft glow
-    const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.35, // More visible for smoother effect
-      side: THREE.DoubleSide,
-    })
+    // Use shared material clone for performance
+    const glowMaterial = getSharedUnderglowMaterial()
     
     const glow = new THREE.Mesh(glowGeometry, glowMaterial)
     glow.rotation.x = -Math.PI / 2
@@ -570,7 +627,7 @@ export class Key {
     }
   }
 
-  update(deltaTime) {
+  update(deltaTime, lightingSettings = null) {
     if (this.targetY !== undefined) {
       const speed = 30
       const diff = this.targetY - this.group.position.y
@@ -582,9 +639,9 @@ export class Key {
       }
     }
 
-    // Update underglow based on lighting settings
-    if (this.underglowMesh && deltaTime) {
-      const settings = getLightingSettings()
+    // Update underglow based on lighting settings (passed from Keyboard for performance)
+    if (this.underglowMesh && deltaTime && lightingSettings) {
+      const settings = lightingSettings
       
       if (!settings.enabled) {
         // Lighting off

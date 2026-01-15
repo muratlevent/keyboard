@@ -7,7 +7,7 @@ import {
   KEYBOARD_WIDTH,
   KEYBOARD_HEIGHT,
 } from './KeyboardLayout.js'
-import { getKeycapLabel } from './SettingsManager.js'
+import { getKeycapLabel, getLightingSettings } from './SettingsManager.js'
 
 export class Keyboard {
   constructor() {
@@ -289,8 +289,11 @@ export class Keyboard {
   }
 
   update(deltaTime) {
+    // Cache lighting settings once per frame (performance optimization)
+    const lightingSettings = getLightingSettings()
+    
     this.keys.forEach(key => {
-      key.update(deltaTime)
+      key.update(deltaTime, lightingSettings)
     })
   }
 

@@ -9,6 +9,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { Keyboard } from './Keyboard.js'
+import { clearKeyCaches } from './Key.js'
 import { InputHandler } from './InputHandler.js'
 import { 
   setLayout, 
@@ -32,13 +33,19 @@ class App {
     this.initLights()
     this.initEnvironment()
     this.initControls()
-    this.initKeyboard()
     this.initGround()
     
     this.setupEventListeners()
     this.setupUI()
-    this.initPostProcessing()
-    this.animate()
+    
+    // Defer keyboard creation until after environment is fully ready
+    // This fixes the whitish first-load issue where materials render
+    // before environment map is applied
+    requestAnimationFrame(() => {
+      this.initKeyboard()
+      this.initPostProcessing()
+      this.animate()
+    })
   }
 
   initScene() {
@@ -85,8 +92,8 @@ class App {
     const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2)
     keyLight.position.set(-0.35, 0.8, 0.45)
     keyLight.castShadow = true
-    keyLight.shadow.mapSize.width = 4096  // High-res shadows
-    keyLight.shadow.mapSize.height = 4096
+    keyLight.shadow.mapSize.width = 2048  // Optimized shadow resolution
+    keyLight.shadow.mapSize.height = 2048
     keyLight.shadow.camera.near = 0.1
     keyLight.shadow.camera.far = 3
     keyLight.shadow.camera.left = -0.5
@@ -103,8 +110,8 @@ class App {
     const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.4)
     fillLight.position.set(-0.5, 0.4, 0.3)
     fillLight.castShadow = true
-    fillLight.shadow.mapSize.width = 2048
-    fillLight.shadow.mapSize.height = 2048
+    fillLight.shadow.mapSize.width = 1024  // Reduced for performance
+    fillLight.shadow.mapSize.height = 1024
     fillLight.shadow.camera.near = 0.1
     fillLight.shadow.camera.far = 2
     fillLight.shadow.camera.left = -0.5
@@ -120,8 +127,8 @@ class App {
     const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 0.35)
     secondaryLight.position.set(0.5, 0.6, 0.3)
     secondaryLight.castShadow = true
-    secondaryLight.shadow.mapSize.width = 2048
-    secondaryLight.shadow.mapSize.height = 2048
+    secondaryLight.shadow.mapSize.width = 1024  // Reduced for performance
+    secondaryLight.shadow.mapSize.height = 1024
     secondaryLight.shadow.camera.near = 0.1
     secondaryLight.shadow.camera.far = 2
     secondaryLight.shadow.camera.left = -0.5
@@ -256,6 +263,35 @@ class App {
           key.legendMesh.material.dispose()
           if (key.legendMesh.material.map) key.legendMesh.material.map.dispose()
         }
+        // Dispose underglow mesh (was missing - memory leak fix)
+        if (key.underglowMesh) {
+          key.underglowMesh.geometry.dispose()
+          key.underglowMesh.material.dispose()
+        }
+      })
+      
+      // Dispose case/plate geometries and materials
+      const keyboardGroup = this.keyboard.getMesh()
+      keyboardGroup.traverse((child) => {
+        // Only dispose meshes that are not keycaps or legends (which are handled above)
+        // We check if it's a mesh and not one of the key objects to avoid double disposal
+        // and ensure we target the case, plate, etc.
+        if (child.isMesh && !Array.from(this.keyboard.keys.values()).some(key => key.keycapMesh === child || key.legendMesh === child || key.underglowMesh === child)) {
+          if (child.geometry) child.geometry.dispose()
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => {
+                if (m.map) m.map.dispose()
+                if (m.bumpMap) m.bumpMap.dispose() // Also dispose bump maps if present
+                m.dispose()
+              })
+            } else {
+              if (child.material.map) child.material.map.dispose()
+              if (child.material.bumpMap) child.material.bumpMap.dispose() // Also dispose bump maps if present
+              child.material.dispose()
+            }
+          }
+        }
       })
     }
     
@@ -263,6 +299,9 @@ class App {
     if (this.inputHandler) {
       this.inputHandler.destroy()
     }
+    
+    // Clear cached materials and geometries before rebuild to prevent memory leaks
+    clearKeyCaches()
     
     // Create new keyboard with new theme colors
     this.keyboard = new Keyboard()
