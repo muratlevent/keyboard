@@ -35,7 +35,7 @@ export class Key {
     )
     
     // Use MeshPhysicalMaterial for plastic finish
-    // Super-realistic with transmission, IOR, and per-key color variation
+    // Extremely realistic with enhanced reflections and plastic properties
     const isSharp = style === 'sharp'
     
     // Subtle per-key color variation for realism (no two keys exactly alike)
@@ -43,30 +43,36 @@ export class Key {
     const hsl = { h: 0, s: 0, l: 0 }
     colorVariation.getHSL(hsl)
     // Add tiny random variations to saturation and lightness
-    const satVar = (Math.random() - 0.5) * 0.015  // ±0.75% saturation
-    const lightVar = (Math.random() - 0.5) * 0.02  // ±1% lightness
+    const satVar = (Math.random() - 0.5) * 0.02   // ±1% saturation
+    const lightVar = (Math.random() - 0.5) * 0.025 // ±1.25% lightness
     colorVariation.setHSL(
       hsl.h,
       Math.max(0, Math.min(1, hsl.s + satVar)),
       Math.max(0.1, Math.min(0.95, hsl.l + lightVar))
     )
     
+    // Add subtle roughness variation per key for realistic manufacturing differences
+    const roughnessVar = (Math.random() - 0.5) * 0.06  // ±3% roughness variation
+    const baseRoughness = isSharp ? 0.55 : 0.48
+    
     const keycapMaterial = new THREE.MeshPhysicalMaterial({
       color: colorVariation,
-      roughness: isSharp ? 0.72 : 0.65,       // Slightly less rough for subtle highlights
+      roughness: Math.max(0.35, Math.min(0.75, baseRoughness + roughnessVar)),
       metalness: 0.0,
-      clearcoat: isSharp ? 0.03 : 0.08,       // Thin clearcoat for plastic sheen
-      clearcoatRoughness: 0.5,
-      reflectivity: 0.15,
-      ior: 1.46,                               // Index of refraction for plastic (acrylic/ABS)
-      thickness: 0.002,                        // Physical thickness for transmission
-      transmission: 0.02,                      // Very subtle translucency for plastic depth
-      attenuationColor: colorVariation,        // Light absorption color
-      attenuationDistance: 0.05,
-      sheen: 0.05,                             // Subtle fiber-like sheen
-      sheenRoughness: 0.8,
+      clearcoat: isSharp ? 0.15 : 0.25,      // Enhanced clearcoat for plastic sheen
+      clearcoatRoughness: 0.35,
+      reflectivity: 0.35,                     // Stronger reflections
+      ior: 1.49,                              // IOR for PBT plastic
+      thickness: 0.003,
+      transmission: 0.015,                    // Subtle translucency
+      attenuationColor: colorVariation,
+      attenuationDistance: 0.04,
+      sheen: 0.08,                            // Subtle sheen for plastic fiber effect
+      sheenRoughness: 0.6,
       sheenColor: new THREE.Color(0xffffff),
-      envMapIntensity: 0.4,                    // Subtle environment reflections
+      envMapIntensity: 0.8,                   // Strong environment reflections
+      specularIntensity: 0.6,                 // Enhanced specular highlights
+      specularColor: new THREE.Color(0xffffff),
     })
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)

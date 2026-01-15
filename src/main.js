@@ -161,35 +161,54 @@ class App {
   }
 
   initEnvironment() {
-    // Create procedural environment for reflections
+    // Create high-quality studio HDR-style environment for realistic reflections
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer)
     pmremGenerator.compileEquirectangularShader()
     
-    // Create a simple gradient environment
-    const envScene = new THREE.Scene()
-    
-    // Create gradient background
+    // Higher resolution canvas for sharper reflections
     const gradientCanvas = document.createElement('canvas')
-    gradientCanvas.width = 256
-    gradientCanvas.height = 256
+    gradientCanvas.width = 1024
+    gradientCanvas.height = 512
     const ctx = gradientCanvas.getContext('2d')
     
-    const gradient = ctx.createLinearGradient(0, 0, 0, 256)
-    gradient.addColorStop(0, '#1a1a2e')
-    gradient.addColorStop(0.5, '#16213e')
-    gradient.addColorStop(1, '#0f0f1a')
+    // Create studio backdrop gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, 512)
+    gradient.addColorStop(0, '#2a2a3e')
+    gradient.addColorStop(0.3, '#1e1e2d')
+    gradient.addColorStop(0.6, '#16161f')
+    gradient.addColorStop(1, '#0a0a0f')
     
     ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 256, 256)
+    ctx.fillRect(0, 0, 1024, 512)
     
-    // Add some subtle "studio light" spots
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)'
-    ctx.beginPath()
-    ctx.arc(200, 50, 40, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(50, 100, 30, 0, Math.PI * 2)
-    ctx.fill()
+    // Add studio light sources for reflections
+    // Main softbox (top-left)
+    const softboxGradient1 = ctx.createRadialGradient(200, 80, 0, 200, 80, 120)
+    softboxGradient1.addColorStop(0, 'rgba(255, 252, 245, 0.25)')
+    softboxGradient1.addColorStop(0.5, 'rgba(255, 250, 240, 0.08)')
+    softboxGradient1.addColorStop(1, 'rgba(255, 248, 235, 0)')
+    ctx.fillStyle = softboxGradient1
+    ctx.fillRect(80, 20, 240, 140)
+    
+    // Secondary softbox (right side)
+    const softboxGradient2 = ctx.createRadialGradient(820, 120, 0, 820, 120, 100)
+    softboxGradient2.addColorStop(0, 'rgba(230, 240, 255, 0.15)')
+    softboxGradient2.addColorStop(0.6, 'rgba(220, 235, 255, 0.05)')
+    softboxGradient2.addColorStop(1, 'rgba(210, 230, 255, 0)')
+    ctx.fillStyle = softboxGradient2
+    ctx.fillRect(720, 40, 200, 180)
+    
+    // Rim light (back accent)
+    const rimGradient = ctx.createRadialGradient(512, 400, 0, 512, 400, 200)
+    rimGradient.addColorStop(0, 'rgba(255, 220, 200, 0.08)')
+    rimGradient.addColorStop(1, 'rgba(255, 210, 180, 0)')
+    ctx.fillStyle = rimGradient
+    ctx.fillRect(312, 320, 400, 180)
+    
+    // Subtle horizontal light bands for smooth reflections
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)'
+    ctx.fillRect(0, 60, 1024, 30)
+    ctx.fillRect(0, 150, 1024, 20)
     
     const envTexture = new THREE.CanvasTexture(gradientCanvas)
     envTexture.mapping = THREE.EquirectangularReflectionMapping
@@ -254,14 +273,18 @@ class App {
   }
 
   initGround() {
-    // Subtle reflective surface under keyboard
+    // Highly reflective desk surface for realistic keyboard reflections
     const groundGeometry = new THREE.PlaneGeometry(3, 3)
     const groundMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf0f2f5,
-      roughness: 0.3,
+      color: 0xe8eaed,
+      roughness: 0.15,           // Very smooth for clear reflections
       metalness: 0.0,
+      clearcoat: 0.8,            // Strong clearcoat like polished desk
+      clearcoatRoughness: 0.1,
+      reflectivity: 0.5,
+      envMapIntensity: 0.6,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.95,
     })
     
     this.groundMesh = new THREE.Mesh(groundGeometry, groundMaterial)
@@ -412,11 +435,11 @@ class App {
     const renderPass = new RenderPass(this.scene, this.camera)
     this.composer.addPass(renderPass)
     
-    // Enhanced SSAO pass - stronger ambient occlusion for realistic contact shadows
+    // Extreme SSAO pass - deep ambient occlusion for highly realistic contact shadows
     this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight)
-    this.ssaoPass.kernelRadius = 0.025  // Larger radius for more visible AO
-    this.ssaoPass.minDistance = 0.00005
-    this.ssaoPass.maxDistance = 0.03
+    this.ssaoPass.kernelRadius = 0.04        // Larger radius for deeper shadows
+    this.ssaoPass.minDistance = 0.00002
+    this.ssaoPass.maxDistance = 0.05
     this.ssaoPass.output = SSAOPass.OUTPUT.Default
     this.composer.addPass(this.ssaoPass)
     
