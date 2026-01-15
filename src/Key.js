@@ -168,6 +168,9 @@ export class Key {
     this.reactiveGlow = 0
     this.geminiTime = 0
     
+    // Pre-allocated color for animations (avoid GC in hot path)
+    this._tempColor = new THREE.Color()
+    
     // Add underglow light
     this.createUnderglow(keyWidth, keyDepth)
     
@@ -521,6 +524,12 @@ export class Key {
     
     this.label = newLabel
     
+    // Clear old canvas reference to help GC
+    if (this.legendCanvas) {
+      this.legendCanvas.width = 0
+      this.legendCanvas.height = 0
+    }
+    
     // Calculate proper aspect ratio for the legend
     const { width, depth } = this.legendDimensions
     const aspectRatio = width / depth
@@ -601,7 +610,7 @@ export class Key {
     if (this.keycapMesh && this.originalColor) {
       const hsl = {}
       this.originalColor.getHSL(hsl)
-      const lightenedColor = new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(1, hsl.l + 0.2))
+      const lightenedColor = this._tempColor.setHSL(hsl.h, hsl.s, Math.min(1, hsl.l + 0.2))
       this.keycapMesh.material.color.copy(lightenedColor)
     }
     
@@ -674,7 +683,7 @@ export class Key {
         case 'cycle':
           // Rainbow wave
           this.hue = (this.hue + this.hueSpeed * deltaTime) % 1
-          const cycleColor = new THREE.Color().setHSL(this.hue, 0.9, 0.5)
+          const cycleColor = this._tempColor.setHSL(this.hue, 0.9, 0.5)
           this.underglowMesh.material.color.copy(cycleColor)
           this.underglowMesh.material.opacity = pressOpacity
           break
@@ -703,7 +712,7 @@ export class Key {
           const geminiSat = 0.85 + Math.sin(wavePhase * 1.5) * 0.1
           const geminiLight = 0.5 + Math.sin(wavePhase * 2) * 0.1
           
-          const geminiColor = new THREE.Color().setHSL(geminiHue, geminiSat, geminiLight)
+          const geminiColor = this._tempColor.setHSL(geminiHue, geminiSat, geminiLight)
           this.underglowMesh.material.color.copy(geminiColor)
           
           // Subtle intensity wave

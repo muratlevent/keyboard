@@ -50,13 +50,23 @@ export class SoundManager {
     const randomIndex = Math.floor(Math.random() * sounds.length)
     const sound = sounds[randomIndex]
     
-    // Clone the audio to allow overlapping sounds
+    // Clone and clean up when done to prevent memory leak
     const soundClone = sound.cloneNode()
     soundClone.volume = 0.5 + Math.random() * 0.2  // Slight volume variation
     soundClone.playbackRate = 0.95 + Math.random() * 0.1  // Slight pitch variation
     
+    // Remove from DOM after playback to allow garbage collection
+    soundClone.addEventListener('ended', () => {
+      soundClone.remove()
+    }, { once: true })
+    
+    soundClone.addEventListener('error', () => {
+      soundClone.remove()
+    }, { once: true })
+    
     soundClone.play().catch(() => {
       // Ignore autoplay errors - user interaction required
+      soundClone.remove()
     })
   }
   
