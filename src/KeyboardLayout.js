@@ -101,12 +101,12 @@ export const KEYBOARD_LAYOUT = [
   { code: 'End', label: 'End', width: 1, x: 15, y: 3, color: 'modKeys' },
 
   // Row 4 - Bottom row (macOS layout)
-  { code: 'ControlLeft', label: '⌃', width: 1.25, x: 0, y: 4, color: 'modKeys' },
-  { code: 'MetaLeft', label: '⌘', width: 1.25, x: 1.25, y: 4, color: 'modKeys' },
-  { code: 'AltLeft', label: '⌥', width: 1.25, x: 2.5, y: 4, color: 'modKeys' },
+  { code: 'ControlLeft', label: '⌃', subLabel: 'control', width: 1.25, x: 0, y: 4, color: 'modKeys' },
+  { code: 'MetaLeft', label: '⌘', subLabel: 'command', width: 1.25, x: 1.25, y: 4, color: 'modKeys' },
+  { code: 'AltLeft', label: '⌥', subLabel: 'option', width: 1.25, x: 2.5, y: 4, color: 'modKeys' },
   { code: 'Space', label: '', width: 6.25, x: 3.75, y: 4, color: 'accentYellow' },
-  { code: 'AltRight', label: '⌥', width: 1, x: 10, y: 4, color: 'modKeys' },
-  { code: 'MetaRight', label: '⌘', width: 1, x: 11, y: 4, color: 'modKeys' },
+  { code: 'AltRight', label: '⌥', subLabel: 'option', width: 1, x: 10, y: 4, color: 'modKeys' },
+  { code: 'MetaRight', label: '⌘', subLabel: 'command', width: 1, x: 11, y: 4, color: 'modKeys' },
   { code: 'Fn', label: 'Fn', width: 1, x: 12, y: 4, color: 'modKeys' },
   { code: 'ArrowLeft', label: '←', width: 1, x: 13, y: 4, color: 'modKeys' },
   { code: 'ArrowDown', label: '↓', width: 1, x: 14, y: 4, color: 'modKeys' },

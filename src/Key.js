@@ -7,6 +7,7 @@ export class Key {
     this.code = keyData.code
     this.label = keyData.label
     this.shiftLabel = keyData.shiftLabel || null  // Shift character for dual-legend keys
+    this.subLabel = keyData.subLabel || null      // Text label under icon (e.g., 'command')
     this.width = keyData.width
     this.x = keyData.x
     this.y = keyData.y
@@ -322,6 +323,20 @@ export class Key {
         ctx.font = `600 ${mainFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
         ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.68)
       }
+    } else if (this.subLabel) {
+      // Icon + text label (like Apple modifier keys: ⌘ command)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      // Icon on top (larger)
+      const iconFontSize = canvasHeight * 0.38
+      ctx.font = `600 ${iconFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.35)
+      
+      // Text label below (smaller)
+      const textFontSize = canvasHeight * 0.21
+      ctx.font = `600 ${textFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillText(this.subLabel, canvasWidth / 2, canvasHeight * 0.72)
     } else {
       if (isSharp) {
         // Sharp/Vintage single legend: Top-left, smaller font
