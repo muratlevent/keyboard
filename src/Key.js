@@ -337,7 +337,7 @@ export class Key {
         ctx.textBaseline = 'middle'
         
         let fontSize = canvasHeight * 0.4
-        let fontWeight = '700'
+        let fontWeight = '600'
         
         if (this.label.length === 1) {
           fontSize = canvasHeight * 0.55
