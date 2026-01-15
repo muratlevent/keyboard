@@ -325,18 +325,34 @@ export class Key {
       }
     } else if (this.subLabel) {
       // Icon + text label (like Apple modifier keys: ⌘ command)
-      ctx.textAlign = 'center'
+      // Left-side modifier keys (x < 4.25) align right, right-side (x >= 10.75) align left
+      const isLeftSide = this.x < 4.25
+      const isRightSide = this.x >= 10.75
+      
+      let textAlign = 'center'
+      let xPos = canvasWidth / 2
+      const padding = canvasWidth * 0.12
+      
+      if (isLeftSide) {
+        textAlign = 'right'
+        xPos = canvasWidth - padding
+      } else if (isRightSide) {
+        textAlign = 'left'
+        xPos = padding
+      }
+      
+      ctx.textAlign = textAlign
       ctx.textBaseline = 'middle'
       
       // Icon on top (larger)
       const iconFontSize = canvasHeight * 0.38
       ctx.font = `600 ${iconFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.35)
+      ctx.fillText(this.label, xPos, canvasHeight * 0.35)
       
       // Text label below (smaller)
       const textFontSize = canvasHeight * 0.21
       ctx.font = `600 ${textFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.subLabel, canvasWidth / 2, canvasHeight * 0.72)
+      ctx.fillText(this.subLabel, xPos, canvasHeight * 0.72)
     } else {
       if (isSharp) {
         // Sharp/Vintage single legend: Top-left, smaller font
