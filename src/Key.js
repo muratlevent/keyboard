@@ -324,35 +324,54 @@ export class Key {
         ctx.fillText(this.label, canvasWidth / 2, canvasHeight * 0.68)
       }
     } else if (this.subLabel) {
-      // Icon + text label (like Apple modifier keys: ⌘ command)
-      // Left-side modifier keys (x < 4.25) align right, right-side (x >= 10.75) align left
-      const isLeftSide = this.x < 4.25
-      const isRightSide = this.x >= 10.75
-      
-      let textAlign = 'center'
-      let xPos = canvasWidth / 2
-      const padding = canvasWidth * 0.12
-      
-      if (isLeftSide) {
-        textAlign = 'right'
-        xPos = canvasWidth - padding
-      } else if (isRightSide) {
-        textAlign = 'left'
-        xPos = padding
+      // Special handling for Fn key (globe bottom-left, fn top-right)
+      if (this.code === 'Fn') {
+        const padding = canvasWidth * 0.12
+        
+        // "fn" text at top-right (smaller)
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'top'
+        const fnFontSize = canvasHeight * 0.28
+        ctx.font = `600 ${fnFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.subLabel, canvasWidth - padding, padding)
+        
+        // Globe icon at bottom-left (larger)
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'bottom'
+        const globeFontSize = canvasHeight * 0.35
+        ctx.font = `400 ${globeFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.label, padding, canvasHeight - padding)
+      } else {
+        // Icon + text label (like Apple modifier keys: ⌘ command)
+        // Left-side modifier keys (x < 4.25) align right, right-side (x >= 10.75) align left
+        const isLeftSide = this.x < 4.25
+        const isRightSide = this.x >= 10.75
+        
+        let textAlign = 'center'
+        let xPos = canvasWidth / 2
+        const padding = canvasWidth * 0.12
+        
+        if (isLeftSide) {
+          textAlign = 'right'
+          xPos = canvasWidth - padding
+        } else if (isRightSide) {
+          textAlign = 'left'
+          xPos = padding
+        }
+        
+        ctx.textAlign = textAlign
+        ctx.textBaseline = 'middle'
+        
+        // Icon on top (larger)
+        const iconFontSize = canvasHeight * 0.38
+        ctx.font = `600 ${iconFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.label, xPos, canvasHeight * 0.35)
+        
+        // Text label below (smaller)
+        const textFontSize = canvasHeight * 0.21
+        ctx.font = `600 ${textFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillText(this.subLabel, xPos, canvasHeight * 0.72)
       }
-      
-      ctx.textAlign = textAlign
-      ctx.textBaseline = 'middle'
-      
-      // Icon on top (larger)
-      const iconFontSize = canvasHeight * 0.38
-      ctx.font = `600 ${iconFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.label, xPos, canvasHeight * 0.35)
-      
-      // Text label below (smaller)
-      const textFontSize = canvasHeight * 0.21
-      ctx.font = `600 ${textFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillText(this.subLabel, xPos, canvasHeight * 0.72)
     } else {
       if (isSharp) {
         // Sharp/Vintage single legend: Top-left, smaller font

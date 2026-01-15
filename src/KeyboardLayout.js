@@ -101,7 +101,7 @@ export const KEYBOARD_LAYOUT = [
   { code: 'End', label: 'End', width: 1, x: 15, y: 3, color: 'modKeys' },
 
   // Row 4 - Bottom row (macOS layout: Fn, Control, Option, Command, Space, Command, Option)
-  { code: 'Fn', label: 'Fn', width: 1, x: 0, y: 4, color: 'modKeys' },
+  { code: 'Fn', label: 'fn', width: 1, x: 0, y: 4, color: 'modKeys' },
   { code: 'ControlLeft', label: '⌃', subLabel: 'control', width: 1, x: 1, y: 4, color: 'modKeys' },
   { code: 'AltLeft', label: '⌥', subLabel: 'option', width: 1, x: 2, y: 4, color: 'modKeys' },
   { code: 'MetaLeft', label: '⌘', subLabel: 'command', width: 1.25, x: 3, y: 4, color: 'modKeys' },
