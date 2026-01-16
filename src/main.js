@@ -14,8 +14,7 @@ import { InputHandler } from './InputHandler.js'
 import { 
   setLayout, 
   setDarkMode,
-  setTheme,
-  setKeycapStyle
+  setTheme
 } from './SettingsManager.js'
 
 class App {
@@ -381,15 +380,6 @@ class App {
     if (themeSelector) {
       themeSelector.addEventListener('change', (e) => {
         setTheme(e.target.value)
-        this.rebuildKeyboard()
-      })
-    }
-
-    // Keycap Style selector
-    const styleSelector = document.getElementById('keycap-style')
-    if (styleSelector) {
-      styleSelector.addEventListener('change', (e) => {
-        setKeycapStyle(e.target.value)
         this.rebuildKeyboard()
       })
     }
