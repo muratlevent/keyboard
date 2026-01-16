@@ -8,8 +8,7 @@ const materialCache = new Map()
 // Geometry cache for performance - keyed by dimensions + style + spacebar flag
 const geometryCache = new Map()
 
-// Shared underglow material (reused across all keys)
-let sharedUnderglowMaterial = null
+
 
 // Clear all caches (call on theme/style change to prevent memory leaks)
 export function clearKeyCaches() {
@@ -24,25 +23,9 @@ export function clearKeyCaches() {
     geometry.dispose()
   })
   geometryCache.clear()
-  
-  // Reset shared underglow
-  if (sharedUnderglowMaterial) {
-    sharedUnderglowMaterial.dispose()
-    sharedUnderglowMaterial = null
-  }
 }
 
-function getSharedUnderglowMaterial() {
-  if (!sharedUnderglowMaterial) {
-    sharedUnderglowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.35,
-      side: THREE.DoubleSide,
-    })
-  }
-  return sharedUnderglowMaterial.clone()
-}
+
 
 function getKeycapMaterial(baseColor, isSharp) {
   // Create unique cache key based on color and style
@@ -160,19 +143,6 @@ export class Key {
         baseColor
       )
     }
-    
-    // Lighting animation states
-    this.pulseTime = 0
-    this.hue = Math.random() // Random start hue for cycle
-    this.hueSpeed = 0.1
-    this.reactiveGlow = 0
-    this.geminiTime = 0
-    
-    // Pre-allocated color for animations (avoid GC in hot path)
-    this._tempColor = new THREE.Color()
-    
-    // Add underglow light
-    this.createUnderglow(keyWidth, keyDepth)
     
     // Position the key group
     const xPos = (this.x + this.width / 2) * KEY_UNIT
@@ -459,7 +429,7 @@ export class Key {
         } else if (this.label.length === 2) {
           fontSize = canvasHeight * 0.4
         } else if (this.label.length <= 4) {
-          fontSize = canvasHeight * 0.28
+          fontSize = canvasHeight * 0.24
         } else {
           fontSize = canvasHeight * 0.22
         }
@@ -505,19 +475,7 @@ export class Key {
     this.group.add(topFace)
   }
 
-  createUnderglow(width, depth) {
-    // Create a larger glow plane that extends beyond keycap edges for smooth light bleed
-    const glowGeometry = new THREE.PlaneGeometry(width * 1.15, depth * 1.15)
-    
-    // Use shared material clone for performance
-    const glowMaterial = getSharedUnderglowMaterial()
-    
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial)
-    glow.rotation.x = -Math.PI / 2
-    glow.position.y = 0.0005 // Slightly above the plate
-    this.underglowMesh = glow
-    this.group.add(glow)
-  }
+
 
   updateLabel(newLabel) {
     if (!this.legendMesh || !this.legendDimensions) return
@@ -610,13 +568,8 @@ export class Key {
     if (this.keycapMesh && this.originalColor) {
       const hsl = {}
       this.originalColor.getHSL(hsl)
-      const lightenedColor = this._tempColor.setHSL(hsl.h, hsl.s, Math.min(1, hsl.l + 0.2))
+      const lightenedColor = new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(1, hsl.l + 0.2))
       this.keycapMesh.material.color.copy(lightenedColor)
-    }
-    
-    // Intensify underglow
-    if (this.underglowMesh) {
-      this.underglowMesh.material.opacity = 0.9
     }
   }
 
@@ -629,14 +582,9 @@ export class Key {
     if (this.keycapMesh && this.originalColor) {
       this.keycapMesh.material.color.copy(this.originalColor)
     }
-    
-    // Dim underglow
-    if (this.underglowMesh) {
-      this.underglowMesh.material.opacity = 0.25
-    }
   }
 
-  update(deltaTime, lightingSettings = null) {
+  update(deltaTime) {
     if (this.targetY !== undefined) {
       const speed = 30
       const diff = this.targetY - this.group.position.y
@@ -645,83 +593,6 @@ export class Key {
         this.group.position.y += diff * speed * deltaTime
       } else {
         this.group.position.y = this.targetY
-      }
-    }
-
-    // Update underglow based on lighting settings (passed from Keyboard for performance)
-    if (this.underglowMesh && deltaTime && lightingSettings) {
-      const settings = lightingSettings
-      
-      if (!settings.enabled) {
-        // Lighting off
-        this.underglowMesh.material.opacity = 0
-        return
-      }
-      
-      // Base opacity from brightness (0-100 -> 0.1-0.9)
-      const baseOpacity = 0.1 + (settings.brightness / 100) * 0.8
-      const pressOpacity = this.isPressed ? 0.95 : baseOpacity
-      
-      // Apply lighting effect
-      switch (settings.effect) {
-        case 'stable':
-          // Solid color from picker
-          this.underglowMesh.material.color.set(settings.color)
-          this.underglowMesh.material.opacity = pressOpacity
-          break
-          
-        case 'pulse':
-          // Breathing effect with custom color
-          this.pulseTime = (this.pulseTime || 0) + deltaTime
-          const pulseRate = 1.5 // seconds per cycle
-          const pulse = (Math.sin(this.pulseTime * Math.PI * 2 / pulseRate) + 1) / 2
-          this.underglowMesh.material.color.set(settings.color)
-          this.underglowMesh.material.opacity = (0.2 + pulse * 0.6) * (settings.brightness / 100)
-          if (this.isPressed) this.underglowMesh.material.opacity = 0.95
-          break
-          
-        case 'cycle':
-          // Rainbow wave
-          this.hue = (this.hue + this.hueSpeed * deltaTime) % 1
-          const cycleColor = this._tempColor.setHSL(this.hue, 0.9, 0.5)
-          this.underglowMesh.material.color.copy(cycleColor)
-          this.underglowMesh.material.opacity = pressOpacity
-          break
-          
-        case 'reactive':
-          // Lights only on when pressed, uses custom color
-          this.underglowMesh.material.color.set(settings.color)
-          // Fade out effect
-          if (this.isPressed) {
-            this.reactiveGlow = 1.0
-          } else {
-            this.reactiveGlow = (this.reactiveGlow || 0) * 0.92 // Decay
-          }
-          this.underglowMesh.material.opacity = this.reactiveGlow * (settings.brightness / 100) * 0.9
-          break
-          
-        case 'gemini':
-          // Smooth flowing wave animation (blue -> purple -> pink -> cyan)
-          this.geminiTime = (this.geminiTime || 0) + deltaTime * 0.8
-          
-          // Position-based phase offset for wave effect
-          const wavePhase = this.geminiTime + this.x * 0.5 + this.y * 0.3
-          
-          // Smooth hue transition through blue-purple-pink spectrum
-          const geminiHue = 0.55 + Math.sin(wavePhase) * 0.15 // 0.4 to 0.7 (cyan to magenta)
-          const geminiSat = 0.85 + Math.sin(wavePhase * 1.5) * 0.1
-          const geminiLight = 0.5 + Math.sin(wavePhase * 2) * 0.1
-          
-          const geminiColor = this._tempColor.setHSL(geminiHue, geminiSat, geminiLight)
-          this.underglowMesh.material.color.copy(geminiColor)
-          
-          // Subtle intensity wave
-          const waveOpacity = baseOpacity * (0.8 + Math.sin(wavePhase * 1.5) * 0.2)
-          this.underglowMesh.material.opacity = this.isPressed ? 0.95 : waveOpacity
-          break
-          
-        default:
-          this.underglowMesh.material.opacity = pressOpacity
       }
     }
   }

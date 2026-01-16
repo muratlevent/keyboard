@@ -13,10 +13,6 @@ import { clearKeyCaches } from './Key.js'
 import { InputHandler } from './InputHandler.js'
 import { 
   setLayout, 
-  setLightingEnabled, 
-  setLightingBrightness, 
-  setLightingColor, 
-  setLightingEffect,
   setDarkMode,
   setTheme,
   setKeycapStyle
@@ -37,6 +33,9 @@ class App {
     
     this.setupEventListeners()
     this.setupUI()
+    
+    // Apply initial room light intensity (70%)
+    this.setRoomLightIntensity(70)
     
     // Defer keyboard creation until after environment is fully ready
     // This fixes the whitish first-load issue where materials render
@@ -263,11 +262,6 @@ class App {
           key.legendMesh.material.dispose()
           if (key.legendMesh.material.map) key.legendMesh.material.map.dispose()
         }
-        // Dispose underglow mesh (was missing - memory leak fix)
-        if (key.underglowMesh) {
-          key.underglowMesh.geometry.dispose()
-          key.underglowMesh.material.dispose()
-        }
       })
       
       // Dispose case/plate geometries and materials
@@ -276,7 +270,7 @@ class App {
         // Only dispose meshes that are not keycaps or legends (which are handled above)
         // We check if it's a mesh and not one of the key objects to avoid double disposal
         // and ensure we target the case, plate, etc.
-        if (child.isMesh && !Array.from(this.keyboard.keys.values()).some(key => key.keycapMesh === child || key.legendMesh === child || key.underglowMesh === child)) {
+        if (child.isMesh && !Array.from(this.keyboard.keys.values()).some(key => key.keycapMesh === child || key.legendMesh === child)) {
           if (child.geometry) child.geometry.dispose()
           if (child.material) {
             if (Array.isArray(child.material)) {
@@ -397,44 +391,6 @@ class App {
       styleSelector.addEventListener('change', (e) => {
         setKeycapStyle(e.target.value)
         this.rebuildKeyboard()
-      })
-    }
-    
-    // Lighting toggle
-    const lightingToggle = document.getElementById('lighting-toggle')
-    if (lightingToggle) {
-      lightingToggle.addEventListener('change', (e) => {
-        setLightingEnabled(e.target.checked)
-      })
-    }
-    
-    // Brightness slider
-    const brightnessSlider = document.getElementById('lighting-brightness')
-    const brightnessValue = document.getElementById('brightness-value')
-    if (brightnessSlider) {
-      brightnessSlider.addEventListener('input', (e) => {
-        const value = parseInt(e.target.value)
-        setLightingBrightness(value)
-        if (brightnessValue) brightnessValue.textContent = `${value}%`
-      })
-    }
-    
-    // Color picker
-    const colorPicker = document.getElementById('lighting-color')
-    const colorHex = document.getElementById('color-hex')
-    if (colorPicker) {
-      colorPicker.addEventListener('input', (e) => {
-        const color = e.target.value
-        setLightingColor(color)
-        if (colorHex) colorHex.textContent = color.toUpperCase()
-      })
-    }
-    
-    // Effect selector
-    const effectSelector = document.getElementById('lighting-effect')
-    if (effectSelector) {
-      effectSelector.addEventListener('change', (e) => {
-        setLightingEffect(e.target.value)
       })
     }
     

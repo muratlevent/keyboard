@@ -333,44 +333,6 @@ export function getKeycapLabel(code, defaultLabel) {
   return labels[code] || defaultLabel
 }
 
-// Lighting Settings
-let lightingSettings = {
-  enabled: false,        // Default off
-  brightness: 50,        // 0-100
-  color: '#00ffff',      // Hex color
-  effect: 'cycle'        // stable, pulse, cycle, gemini
-}
-
-export function getLightingSettings() {
-  return lightingSettings
-}
-
-export function setLightingEnabled(enabled) {
-  lightingSettings.enabled = enabled
-  dispatchLightingChange()
-}
-
-export function setLightingBrightness(brightness) {
-  lightingSettings.brightness = Math.max(0, Math.min(100, brightness))
-  dispatchLightingChange()
-}
-
-export function setLightingColor(color) {
-  lightingSettings.color = color
-  dispatchLightingChange()
-}
-
-export function setLightingEffect(effect) {
-  lightingSettings.effect = effect
-  dispatchLightingChange()
-}
-
-function dispatchLightingChange() {
-  window.dispatchEvent(new CustomEvent('lightingchange', { 
-    detail: { ...lightingSettings }
-  }))
-}
-
 // Dark Mode
 let darkMode = false
 
