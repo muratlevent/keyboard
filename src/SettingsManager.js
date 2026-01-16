@@ -342,7 +342,7 @@ let lightingSettings = {
 }
 
 export function getLightingSettings() {
-  return { ...lightingSettings }
+  return lightingSettings
 }
 
 export function setLightingEnabled(enabled) {

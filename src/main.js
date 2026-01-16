@@ -534,7 +534,7 @@ class App {
   }
 
   animate() {
-    requestAnimationFrame(() => this.animate())
+    this.animationFrameId = requestAnimationFrame(() => this.animate())
     
     const deltaTime = this.clock.getDelta()
     
