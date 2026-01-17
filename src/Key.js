@@ -37,69 +37,74 @@ function getSharedShadowTexture() {
 }
 
 // Create painted shading texture with baked lighting
-// This draws the edge shading directly - no runtime calculations
+// Create baked directional lighting texture
+// Simulates fixed light source from Top-Left (no runtime light calc)
 function getPaintedShadingTexture() {
   if (paintedShadingTexture) return paintedShadingTexture
   
-  const size = 128 // Small texture, just needs smooth gradients
+  // Optimized size (256 is plenty for smooth gradients)
+  const size = 256
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
   
-  // Base white (will be multiplied with material color)
+  // 1. Base color (neutral)
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, size, size)
   
-  // Left edge shadow (light from right)
-  const leftGradient = ctx.createLinearGradient(0, 0, size * 0.35, 0)
-  leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')    // ~88% brightness
-  leftGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.05)')  // ~95%
-  leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')       // 100%
-  ctx.fillStyle = leftGradient
-  ctx.fillRect(0, 0, size * 0.35, size)
+  // 2. Main Face Gradient (Light falls off from Top-Left to Bottom-Right)
+  // This gives the flat top surface a slight angle/depth appearance
+  const faceGradient = ctx.createLinearGradient(0, 0, size, size)
+  faceGradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)')   // Highlight start
+  faceGradient.addColorStop(1, 'rgba(0, 0, 0, 0.05)')         // Shadow end
+  ctx.fillStyle = faceGradient
+  ctx.fillRect(0, 0, size, size)
+
+  // 3. Specular Highlight (Top-Left Edge/Corner)
+  // Strong bright glow where light hits first
+  const highlightGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.6)
+  highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)') // Hotspot
+  highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)')
+  highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+  ctx.fillStyle = highlightGradient
+  ctx.fillRect(0, 0, size * 0.6, size * 0.6)
+
+  // 4. Deep Shadow (Bottom-Right Edge/Corner)
+  // The "Cast Shadow" on the key side itself facing away from light
+  const shadowGradient = ctx.createRadialGradient(size, size, 0, size, size, size * 0.7)
+  shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.25)')     // Deepest shadow
+  shadowGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.05)')
+  shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  ctx.fillStyle = shadowGradient
+  ctx.fillRect(size * 0.3, size * 0.3, size * 0.7, size * 0.7)
+
+  // 5. Ambient Occlusion (Base Ring)
+  // Darkens the very bottom where key meets plate
+  // Top edge requires less AO (illuminated), Bottom edge more (shadowed)
   
-  // Bottom edge shadow (light from top)
-  const bottomGradient = ctx.createLinearGradient(0, size * 0.7, 0, size)
-  bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)')      // 100%
-  bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.04)') // ~96%
-  bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.08)')   // ~92%
-  ctx.fillStyle = bottomGradient
-  ctx.fillRect(0, size * 0.7, size, size * 0.3)
+  // Bottom AO (Strong)
+  const bottomAO = ctx.createLinearGradient(0, size * 0.85, 0, size)
+  bottomAO.addColorStop(0, 'rgba(0, 0, 0, 0)')
+  bottomAO.addColorStop(1, 'rgba(0, 0, 0, 0.3)')
+  ctx.fillStyle = bottomAO
+  ctx.fillRect(0, size * 0.85, size, size * 0.15)
   
-  // Right edge highlight (light source side)
-  const rightGradient = ctx.createLinearGradient(size * 0.7, 0, size, 0)
-  rightGradient.addColorStop(0, 'rgba(255, 255, 255, 0)')    // 100%
-  rightGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.03)') // ~103%
-  rightGradient.addColorStop(1, 'rgba(255, 255, 255, 0.06)')   // ~106%
-  ctx.fillStyle = rightGradient
-  ctx.fillRect(size * 0.7, 0, size * 0.3, size)
+  // Right AO (Strong)
+  const rightAO = ctx.createLinearGradient(size * 0.85, 0, size, 0)
+  rightAO.addColorStop(0, 'rgba(0, 0, 0, 0)')
+  rightAO.addColorStop(1, 'rgba(0, 0, 0, 0.25)')
+  ctx.fillStyle = rightAO
+  ctx.fillRect(size * 0.85, 0, size * 0.15, size)
   
-  // Top edge highlight
-  const topGradient = ctx.createLinearGradient(0, 0, 0, size * 0.25)
-  topGradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)') // ~105%
-  topGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)') // ~102%
-  topGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')    // 100%
-  ctx.fillStyle = topGradient
-  ctx.fillRect(0, 0, size, size * 0.25)
-  
-  // Corner gradients for smooth transitions
-  // Bottom-left corner (darkest)
-  const blCorner = ctx.createRadialGradient(0, size, 0, 0, size, size * 0.35)
-  blCorner.addColorStop(0, 'rgba(0, 0, 0, 0.14)')  // ~86%
-  blCorner.addColorStop(0.5, 'rgba(0, 0, 0, 0.06)') // ~94%
-  blCorner.addColorStop(1, 'rgba(0, 0, 0, 0)')     // 100%
-  ctx.fillStyle = blCorner
-  ctx.fillRect(0, size * 0.65, size * 0.35, size * 0.35)
-  
-  // Top-right corner (brightest)
-  const trCorner = ctx.createRadialGradient(size, 0, 0, size, 0, size * 0.3)
-  trCorner.addColorStop(0, 'rgba(255, 255, 255, 0.08)') // ~108%
-  trCorner.addColorStop(0.5, 'rgba(255, 255, 255, 0.03)') // ~103%
-  trCorner.addColorStop(1, 'rgba(255, 255, 255, 0)')    // 100%
-  ctx.fillStyle = trCorner
-  ctx.fillRect(size * 0.7, 0, size * 0.3, size * 0.3)
-  
+  // Top/Left AO (Weak/None - illuminated)
+  // Subtle definition line only
+  const topDef = ctx.createLinearGradient(0, 0, 0, size * 0.05)
+  topDef.addColorStop(0, 'rgba(0, 0, 0, 0.05)')
+  topDef.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  ctx.fillStyle = topDef
+  ctx.fillRect(0, 0, size, size * 0.05)
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.minFilter = THREE.LinearFilter
