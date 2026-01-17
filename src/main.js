@@ -19,6 +19,11 @@ class App {
     this.clock = new THREE.Clock();
     this.loadingOverlay = document.getElementById("loading-overlay");
     this.isReady = false;
+    
+    // FPS tracking
+    this.fpsFrames = 0;
+    this.fpsTime = 0;
+    this.fpsDisplay = null;
 
     this.bootstrap();
   }
@@ -78,8 +83,11 @@ class App {
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(35, aspect, 0.01, 100);
 
-    // Position camera for front-facing slightly elevated view (like reference)
-    this.camera.position.set(0, 0.18, 0.45);
+    // Position camera at ~30 degrees from vertical (more 3D depth)
+    // At 30 degrees: y = cos(30°) * distance, z = sin(30°) * distance
+    const distance = 0.55;
+    const angle = 30 * (Math.PI / 180); // 30 degrees in radians
+    this.camera.position.set(0, distance * Math.cos(angle), distance * Math.sin(angle));
     this.camera.lookAt(0, 0.01, 0);
   }
 
@@ -94,8 +102,8 @@ class App {
     const { width, height, pixelRatio } = this.getViewport();
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Disable shadow maps for performance - using fake shadows instead
+    this.renderer.shadowMap.enabled = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -105,80 +113,34 @@ class App {
     // Store lights for dynamic intensity control
     this.sceneLights = [];
 
-    // Reduced ambient for more dramatic shadows
-    const ambient = new THREE.AmbientLight(0xffffff, 0.25);
+    // Increased ambient for bright, even lighting (no real shadows)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
-    this.sceneLights.push({ light: ambient, baseIntensity: 0.25 });
+    this.sceneLights.push({ light: ambient, baseIntensity: 0.5 });
 
-    // Main key light (top-front-left) - warm, positioned to match reference
-    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
-    keyLight.position.set(-0.35, 0.8, 0.45);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048; // Optimized shadow resolution
-    keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.near = 0.1;
-    keyLight.shadow.camera.far = 3;
-    keyLight.shadow.camera.left = -0.5;
-    keyLight.shadow.camera.right = 0.5;
-    keyLight.shadow.camera.top = 0.5;
-    keyLight.shadow.camera.bottom = -0.5;
-    keyLight.shadow.bias = -0.0003;
-    keyLight.shadow.normalBias = 0.001; // Reduces shadow acne
-    keyLight.shadow.radius = 3; // Crisp but not hard shadows
+    // Main key light (top) - warm, no shadows for performance
+    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
+    keyLight.position.set(0, 1, 0.2);
     this.scene.add(keyLight);
-    this.sceneLights.push({ light: keyLight, baseIntensity: 1.2 });
+    this.sceneLights.push({ light: keyLight, baseIntensity: 1.0 });
 
-    // Fill light (left side) - cool, with soft shadows
+    // Fill light (front-left) - cool
     const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.4);
-    fillLight.position.set(-0.5, 0.4, 0.3);
-    fillLight.castShadow = true;
-    fillLight.shadow.mapSize.width = 1024; // Reduced for performance
-    fillLight.shadow.mapSize.height = 1024;
-    fillLight.shadow.camera.near = 0.1;
-    fillLight.shadow.camera.far = 2;
-    fillLight.shadow.camera.left = -0.5;
-    fillLight.shadow.camera.right = 0.5;
-    fillLight.shadow.camera.top = 0.5;
-    fillLight.shadow.camera.bottom = -0.5;
-    fillLight.shadow.bias = -0.0003;
-    fillLight.shadow.radius = 6; // Very soft secondary shadows
+    fillLight.position.set(-0.5, 0.5, 0.5);
     this.scene.add(fillLight);
     this.sceneLights.push({ light: fillLight, baseIntensity: 0.4 });
 
-    // Secondary key light from right for realistic multi-directional shadows
+    // Fill light from right for balanced lighting
     const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 0.35);
-    secondaryLight.position.set(0.5, 0.6, 0.3);
-    secondaryLight.castShadow = true;
-    secondaryLight.shadow.mapSize.width = 1024; // Reduced for performance
-    secondaryLight.shadow.mapSize.height = 1024;
-    secondaryLight.shadow.camera.near = 0.1;
-    secondaryLight.shadow.camera.far = 2;
-    secondaryLight.shadow.camera.left = -0.5;
-    secondaryLight.shadow.camera.right = 0.5;
-    secondaryLight.shadow.camera.top = 0.5;
-    secondaryLight.shadow.camera.bottom = -0.5;
-    secondaryLight.shadow.bias = -0.0003;
-    secondaryLight.shadow.radius = 5;
+    secondaryLight.position.set(0.5, 0.5, 0.3);
     this.scene.add(secondaryLight);
     this.sceneLights.push({ light: secondaryLight, baseIntensity: 0.35 });
 
-    // Rim light (back-right) - accent
-    const rimLight = new THREE.DirectionalLight(0xffd4c4, 0.6);
-    rimLight.position.set(0.3, 0.15, -0.4);
-    this.scene.add(rimLight);
-    this.sceneLights.push({ light: rimLight, baseIntensity: 0.6 });
-
     // Top light for key highlights
-    const topLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    const topLight = new THREE.DirectionalLight(0xffffff, 0.5);
     topLight.position.set(0, 1, 0);
     this.scene.add(topLight);
-    this.sceneLights.push({ light: topLight, baseIntensity: 0.4 });
-
-    // Subtle point light for case reflection
-    const caseLight = new THREE.PointLight(0xffd4c4, 0.3, 1);
-    caseLight.position.set(0, 0.1, 0.4);
-    this.scene.add(caseLight);
-    this.sceneLights.push({ light: caseLight, baseIntensity: 0.3 });
+    this.sceneLights.push({ light: topLight, baseIntensity: 0.5 });
   }
 
   setRoomLightIntensity(percent) {
@@ -257,15 +219,22 @@ class App {
   }
 
   initControls() {
-    this.controls = new OrbitControls(this.camera, this.canvas);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 0.25;
-    this.controls.maxDistance = 1.2;
-    this.controls.minPolarAngle = Math.PI * 0.15;
-    this.controls.maxPolarAngle = Math.PI * 0.55;
-    this.controls.target.set(0, 0.02, 0);
-    this.controls.update();
+    // OrbitControls with zoom-only mode - rotation/panning disabled for fixed view
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    
+    // Disable rotation and panning - keep fixed camera angle
+    this.controls.enableRotate = false;
+    this.controls.enablePan = false;
+    this.controls.enableZoom = true;
+    
+    // Zoom limits (min = close, max = far)
+    this.controls.minDistance = 0.2;
+    this.controls.maxDistance = 1.0;
+    
+    // Smooth zooming - damping DISABLED to prevent continuous re-renders when idle
+    // With damping enabled, controls.update() triggers render every frame even when not zooming
+    this.controls.zoomSpeed = 1.0;
+    this.controls.enableDamping = false;
   }
 
   initKeyboard() {
@@ -459,6 +428,31 @@ class App {
         if (roomLightValue) roomLightValue.textContent = `${value}%`;
       });
     }
+    
+    // Create FPS counter display
+    this.createFPSCounter();
+  }
+  
+  createFPSCounter() {
+    const fpsDiv = document.createElement('div');
+    fpsDiv.id = 'fps-counter';
+    fpsDiv.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #00ff00;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 10000;
+      pointer-events: none;
+    `;
+    fpsDiv.textContent = 'FPS: --';
+    document.body.appendChild(fpsDiv);
+    this.fpsDisplay = fpsDiv;
   }
 
   initPostProcessing() {
@@ -470,19 +464,8 @@ class App {
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
 
-    // Extreme SSAO pass - deep ambient occlusion for highly realistic contact shadows
+    // SSAO disabled for performance - using fake shadows instead
     const { width, height, pixelRatio } = this.getViewport();
-    this.ssaoPass = new SSAOPass(
-      this.scene,
-      this.camera,
-      width * pixelRatio,
-      height * pixelRatio
-    );
-    this.ssaoPass.kernelRadius = 0.04; // Larger radius for deeper shadows
-    this.ssaoPass.minDistance = 0.00002;
-    this.ssaoPass.maxDistance = 0.05;
-    this.ssaoPass.output = SSAOPass.OUTPUT.Default;
-    this.composer.addPass(this.ssaoPass);
 
     // Subtle bloom for realistic light glow on bright edges
     const bloomPass = new UnrealBloomPass(
@@ -539,12 +522,28 @@ class App {
     this.animationFrameId = requestAnimationFrame(() => this.animate());
 
     const deltaTime = this.clock.getDelta();
+    
+    // Update FPS counter
+    this.fpsFrames++;
+    this.fpsTime += deltaTime;
+    if (this.fpsTime >= 0.5) { // Update every 0.5 seconds
+      const fps = Math.round(this.fpsFrames / this.fpsTime);
+      if (this.fpsDisplay) {
+        this.fpsDisplay.textContent = `FPS: ${fps}`;
+        // Color code: green > 55, yellow > 30, red <= 30
+        this.fpsDisplay.style.color = fps > 55 ? '#00ff00' : fps > 30 ? '#ffff00' : '#ff4444';
+      }
+      this.fpsFrames = 0;
+      this.fpsTime = 0;
+    }
 
     // Update keyboard animations
     this.keyboard.update(deltaTime);
 
-    // Update orbit controls
-    this.controls.update();
+    // Update controls for smooth zoom damping
+    if (this.controls) {
+      this.controls.update();
+    }
 
     // Render with post-processing
     this.composer.render();

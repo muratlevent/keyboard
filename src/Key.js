@@ -8,6 +8,108 @@ const materialCache = new Map()
 // Geometry cache for performance - keyed by dimensions + style + spacebar flag
 const geometryCache = new Map()
 
+// Painted shading texture cache - single shared texture
+let paintedShadingTexture = null
+
+// Shared shadow texture cache - single texture for all keys
+let sharedShadowTexture = null
+
+// Get or create the shared shadow texture (used by all keys)
+function getSharedShadowTexture() {
+  if (sharedShadowTexture) return sharedShadowTexture
+  
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  
+  // Radial gradient for soft shadow edges
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0.2)')   // Darker center
+  gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.12)') // Medium
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')     // Transparent edges
+  
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, 64, 64)
+  
+  sharedShadowTexture = new THREE.CanvasTexture(canvas)
+  return sharedShadowTexture
+}
+
+// Create painted shading texture with baked lighting
+// This draws the edge shading directly - no runtime calculations
+function getPaintedShadingTexture() {
+  if (paintedShadingTexture) return paintedShadingTexture
+  
+  const size = 128 // Small texture, just needs smooth gradients
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  
+  // Base white (will be multiplied with material color)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, size, size)
+  
+  // Left edge shadow (light from right)
+  const leftGradient = ctx.createLinearGradient(0, 0, size * 0.35, 0)
+  leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.12)')    // ~88% brightness
+  leftGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.05)')  // ~95%
+  leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')       // 100%
+  ctx.fillStyle = leftGradient
+  ctx.fillRect(0, 0, size * 0.35, size)
+  
+  // Bottom edge shadow (light from top)
+  const bottomGradient = ctx.createLinearGradient(0, size * 0.7, 0, size)
+  bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)')      // 100%
+  bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.04)') // ~96%
+  bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.08)')   // ~92%
+  ctx.fillStyle = bottomGradient
+  ctx.fillRect(0, size * 0.7, size, size * 0.3)
+  
+  // Right edge highlight (light source side)
+  const rightGradient = ctx.createLinearGradient(size * 0.7, 0, size, 0)
+  rightGradient.addColorStop(0, 'rgba(255, 255, 255, 0)')    // 100%
+  rightGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.03)') // ~103%
+  rightGradient.addColorStop(1, 'rgba(255, 255, 255, 0.06)')   // ~106%
+  ctx.fillStyle = rightGradient
+  ctx.fillRect(size * 0.7, 0, size * 0.3, size)
+  
+  // Top edge highlight
+  const topGradient = ctx.createLinearGradient(0, 0, 0, size * 0.25)
+  topGradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)') // ~105%
+  topGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)') // ~102%
+  topGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')    // 100%
+  ctx.fillStyle = topGradient
+  ctx.fillRect(0, 0, size, size * 0.25)
+  
+  // Corner gradients for smooth transitions
+  // Bottom-left corner (darkest)
+  const blCorner = ctx.createRadialGradient(0, size, 0, 0, size, size * 0.35)
+  blCorner.addColorStop(0, 'rgba(0, 0, 0, 0.14)')  // ~86%
+  blCorner.addColorStop(0.5, 'rgba(0, 0, 0, 0.06)') // ~94%
+  blCorner.addColorStop(1, 'rgba(0, 0, 0, 0)')     // 100%
+  ctx.fillStyle = blCorner
+  ctx.fillRect(0, size * 0.65, size * 0.35, size * 0.35)
+  
+  // Top-right corner (brightest)
+  const trCorner = ctx.createRadialGradient(size, 0, 0, size, 0, size * 0.3)
+  trCorner.addColorStop(0, 'rgba(255, 255, 255, 0.08)') // ~108%
+  trCorner.addColorStop(0.5, 'rgba(255, 255, 255, 0.03)') // ~103%
+  trCorner.addColorStop(1, 'rgba(255, 255, 255, 0)')    // 100%
+  ctx.fillStyle = trCorner
+  ctx.fillRect(size * 0.7, 0, size * 0.3, size * 0.3)
+  
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.generateMipmaps = false
+  
+  paintedShadingTexture = texture
+  return texture
+}
+
 
 
 // Clear all caches (call on theme/style change to prevent memory leaks)
@@ -23,6 +125,18 @@ export function clearKeyCaches() {
     geometry.dispose()
   })
   geometryCache.clear()
+  
+  // Dispose painted shading texture
+  if (paintedShadingTexture) {
+    paintedShadingTexture.dispose()
+    paintedShadingTexture = null
+  }
+  
+  // Dispose shared shadow texture
+  if (sharedShadowTexture) {
+    sharedShadowTexture.dispose()
+    sharedShadowTexture = null
+  }
 }
 
 
@@ -36,6 +150,9 @@ function getKeycapMaterial(baseColor) {
     return materialCache.get(cacheKey).clone()
   }
   
+  // Get the painted shading texture (shared across all keys)
+  const shadingMap = getPaintedShadingTexture()
+  
   const material = new THREE.MeshPhysicalMaterial({
     color: baseColor,
     roughness: 0.48,
@@ -47,6 +164,8 @@ function getKeycapMaterial(baseColor) {
     envMapIntensity: 0.8,
     specularIntensity: 0.6,
     specularColor: new THREE.Color(0xffffff),
+    // Painted shading texture - no vertex color calculations needed
+    map: shadingMap,
   })
   
   materialCache.set(cacheKey, material)
@@ -116,11 +235,15 @@ export class Key {
     
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial)
     keycap.position.y = 0 // Geometry is already centered/positioned in creator
-    keycap.castShadow = true
-    keycap.receiveShadow = true
+    // Shadows disabled for performance - using fake shadows instead
+    keycap.castShadow = false
+    keycap.receiveShadow = false
     this.keycapMesh = keycap
     this.originalColor = keycapMaterial.color.clone()
     this.group.add(keycap)
+    
+    // Add fake shadow plane under the key for visual depth
+    this.createFakeShadow(keyWidth, keyDepth)
     
     // Add legend on top (calculating top surface dimensions based on taperOffset)
     const topWidth = Math.max(0.001, keyWidth - 2 * taperOffset)
@@ -144,6 +267,38 @@ export class Key {
     this.group.position.set(xPos, 0, zPos)
     
     this.mesh = this.group
+  }
+
+  createFakeShadow(keyWidth, keyDepth) {
+    // Create a fixed directional shadow as if light comes from top-left
+    // Uses SHARED texture for all keys - huge memory savings (70+ textures → 1)
+    const shadowOffsetX = 0.0015; // Shadow offset to right (light from left)
+    const shadowOffsetZ = 0.002;  // Shadow offset to back (light from front)
+    const shadowSize = 1.08;      // Shadow slightly larger than key
+    
+    const shadowGeometry = new THREE.PlaneGeometry(
+      keyWidth * shadowSize,
+      keyDepth * shadowSize
+    )
+    
+    // Use shared shadow texture (created once, reused by all keys)
+    const shadowTexture = getSharedShadowTexture()
+    
+    const shadowMaterial = new THREE.MeshBasicMaterial({
+      map: shadowTexture,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending,
+    })
+    
+    const shadowMesh = new THREE.Mesh(shadowGeometry, shadowMaterial)
+    shadowMesh.rotation.x = -Math.PI / 2 // Lay flat
+    shadowMesh.position.y = -0.0005 // Just below the key base
+    shadowMesh.position.x = shadowOffsetX // Fixed offset for directional light
+    shadowMesh.position.z = shadowOffsetZ
+    
+    this.fakeShadowMesh = shadowMesh
+    this.group.add(shadowMesh)
   }
 
   createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3) {
@@ -256,6 +411,10 @@ export class Key {
     }
 
     geometry.computeVertexNormals()
+    
+    // Shading is now handled by painted texture (getPaintedShadingTexture)
+    // No vertex color calculations needed - maximum performance
+    
     return geometry
   }
 
