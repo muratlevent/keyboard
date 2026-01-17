@@ -65,10 +65,10 @@ function getPaintedShadingTexture() {
   }
   ctx.putImageData(imageData, 0, 0)
   
-  // 2. Main Face Gradient (Light falls off from Top-Left to Bottom-Right)
-  const faceGradient = ctx.createLinearGradient(0, 0, size, size)
-  faceGradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)')   // Stronger Highlight
-  faceGradient.addColorStop(1, 'rgba(0, 0, 0, 0.08)')         // Stronger Shadow
+  // 2. Main Face Gradient (Light from Top-Right → Shadow to Bottom-Left)
+  const faceGradient = ctx.createLinearGradient(size, 0, 0, size)
+  faceGradient.addColorStop(0, 'rgba(255, 255, 255, 0.10)')   // Highlight (right/top)
+  faceGradient.addColorStop(1, 'rgba(0, 0, 0, 0.06)')         // Shadow (left/bottom)
   ctx.fillStyle = faceGradient
   ctx.fillRect(0, 0, size, size)
 
@@ -81,42 +81,49 @@ function getPaintedShadingTexture() {
   ctx.fillStyle = sssGradient
   ctx.fillRect(0, 0, size, size)
 
-  // 4. Specular Bevel Highlight (Top-Left Edge)
-  // FIXED: Softened and blurred to look real, not "drawn"
+  // 4. Specular Bevel Highlight (Top-Right Edge)
+  // Soft and subtle to avoid "drawn" look
   ctx.save()
   ctx.beginPath()
-  ctx.moveTo(0, size)
-  ctx.lineTo(0, 0)
+  ctx.moveTo(0, 0)
   ctx.lineTo(size, 0)
+  ctx.lineTo(size, size)
   ctx.lineWidth = size * 0.03
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)' // Much softer (was 0.4)
-  ctx.shadowBlur = 4 // Add blur to soften jagged edge
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.2)'
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+  ctx.shadowBlur = 3
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.18)'
   ctx.stroke()
   ctx.restore()
 
-  // 5. Deep Shadow (Bottom-Right Edge/Corner)
-  const shadowGradient = ctx.createRadialGradient(size, size, 0, size, size, size * 0.7)
-  shadowGradient.addColorStop(0, 'rgba(10, 5, 20, 0.2)')   // Softer shadow
-  shadowGradient.addColorStop(0.6, 'rgba(20, 10, 30, 0.02)')
+  // 5. Deep Shadow (Bottom-Left Edge/Corner)
+  const shadowGradient = ctx.createRadialGradient(0, size, 0, 0, size, size * 0.7)
+  shadowGradient.addColorStop(0, 'rgba(10, 5, 20, 0.16)')
+  shadowGradient.addColorStop(0.6, 'rgba(20, 10, 30, 0.015)')
   shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
   ctx.fillStyle = shadowGradient
-  ctx.fillRect(size * 0.3, size * 0.3, size * 0.7, size * 0.7)
+  ctx.fillRect(0, size * 0.3, size * 0.7, size * 0.7)
+
+  // 5.1 Subtle lift (Bottom-Right Corner)
+  const bottomRightLift = ctx.createRadialGradient(size, size, 0, size, size, size * 0.55)
+  bottomRightLift.addColorStop(0, 'rgba(255, 255, 255, 0.06)')
+  bottomRightLift.addColorStop(1, 'rgba(255, 255, 255, 0)')
+  ctx.fillStyle = bottomRightLift
+  ctx.fillRect(size * 0.45, size * 0.45, size * 0.55, size * 0.55)
   
-  // 6. Ambient Occlusion with color shift
-  // Bottom AO (Strong)
+  // 6. Ambient Occlusion (soft, avoids dirty black)
+  // Bottom AO (soft)
   const bottomAO = ctx.createLinearGradient(0, size * 0.85, 0, size)
   bottomAO.addColorStop(0, 'rgba(0, 0, 0, 0)')
-  bottomAO.addColorStop(1, 'rgba(0, 0, 0, 0.25)') // Subtle reduce
+  bottomAO.addColorStop(1, 'rgba(0, 0, 0, 0.12)')
   ctx.fillStyle = bottomAO
   ctx.fillRect(0, size * 0.85, size, size * 0.15)
   
-  // Right AO (Strong)
-  const rightAO = ctx.createLinearGradient(size * 0.85, 0, size, 0)
-  rightAO.addColorStop(0, 'rgba(0, 0, 0, 0)')
-  rightAO.addColorStop(1, 'rgba(0, 0, 0, 0.25)')
-  ctx.fillStyle = rightAO
-  ctx.fillRect(size * 0.85, 0, size * 0.15, size)
+  // Left AO (soft)
+  const leftAO = ctx.createLinearGradient(0, 0, size * 0.15, 0)
+  leftAO.addColorStop(0, 'rgba(0, 0, 0, 0.16)')
+  leftAO.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  ctx.fillStyle = leftAO
+  ctx.fillRect(0, 0, size * 0.15, size)
   
   // Top Definition Line is covered by Bevel Highlight now
 
