@@ -91,7 +91,7 @@ function getPaintedShadingTexture() {
     0,
     size * 0.55,
     size * 0.45,
-    size * 0.7
+    size * 0.7,
   );
   centerLift.addColorStop(0, "rgba(255, 255, 255, 0.05)");
   centerLift.addColorStop(1, "rgba(255, 255, 255, 0)");
