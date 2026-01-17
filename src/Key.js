@@ -52,41 +52,62 @@ function getPaintedShadingTexture() {
   // 1. Base color (neutral)
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, size, size)
+
+  // ULTRA-REALISM: Add Micro-Grain Noise (Simulates ABS/PBT Plastic Texture)
+  // This breaks up the "perfect" CG look and adds material definition
+  const imageData = ctx.getImageData(0, 0, size, size)
+  const data = imageData.data
+  for (let i = 0; i < data.length; i += 4) {
+    const grain = (Math.random() - 0.5) * 4 // Subtle noise (+-2 units)
+    data[i] += grain
+    data[i+1] += grain
+    data[i+2] += grain
+  }
+  ctx.putImageData(imageData, 0, 0)
   
   // 2. Main Face Gradient (Light falls off from Top-Left to Bottom-Right)
-  // This gives the flat top surface a slight angle/depth appearance
   const faceGradient = ctx.createLinearGradient(0, 0, size, size)
-  faceGradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)')   // Highlight start
-  faceGradient.addColorStop(1, 'rgba(0, 0, 0, 0.05)')         // Shadow end
+  faceGradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)')   // Stronger Highlight
+  faceGradient.addColorStop(1, 'rgba(0, 0, 0, 0.08)')         // Stronger Shadow
   ctx.fillStyle = faceGradient
   ctx.fillRect(0, 0, size, size)
 
-  // 3. Specular Highlight (Top-Left Edge/Corner)
-  // Strong bright glow where light hits first
-  const highlightGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.6)
-  highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)') // Hotspot
-  highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)')
-  highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-  ctx.fillStyle = highlightGradient
-  ctx.fillRect(0, 0, size * 0.6, size * 0.6)
+  // 3. Fake Subsurface Scattering (SSS) "Warm Glow" Band
+  // FIXED: Reduced saturation significantly to look real
+  const sssGradient = ctx.createLinearGradient(size * 0.2, size * 0.2, size * 0.8, size * 0.8)
+  sssGradient.addColorStop(0.4, 'rgba(255, 220, 200, 0)') // Transparent
+  sssGradient.addColorStop(0.5, 'rgba(255, 180, 160, 0.04)') // Very subtle warm glow
+  sssGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0)') // Transparent
+  ctx.fillStyle = sssGradient
+  ctx.fillRect(0, 0, size, size)
 
-  // 4. Deep Shadow (Bottom-Right Edge/Corner)
-  // The "Cast Shadow" on the key side itself facing away from light
+  // 4. Specular Bevel Highlight (Top-Left Edge)
+  // FIXED: Softened and blurred to look real, not "drawn"
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(0, size)
+  ctx.lineTo(0, 0)
+  ctx.lineTo(size, 0)
+  ctx.lineWidth = size * 0.03
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)' // Much softer (was 0.4)
+  ctx.shadowBlur = 4 // Add blur to soften jagged edge
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.2)'
+  ctx.stroke()
+  ctx.restore()
+
+  // 5. Deep Shadow (Bottom-Right Edge/Corner)
   const shadowGradient = ctx.createRadialGradient(size, size, 0, size, size, size * 0.7)
-  shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.25)')     // Deepest shadow
-  shadowGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.05)')
+  shadowGradient.addColorStop(0, 'rgba(10, 5, 20, 0.2)')   // Softer shadow
+  shadowGradient.addColorStop(0.6, 'rgba(20, 10, 30, 0.02)')
   shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
   ctx.fillStyle = shadowGradient
   ctx.fillRect(size * 0.3, size * 0.3, size * 0.7, size * 0.7)
-
-  // 5. Ambient Occlusion (Base Ring)
-  // Darkens the very bottom where key meets plate
-  // Top edge requires less AO (illuminated), Bottom edge more (shadowed)
   
+  // 6. Ambient Occlusion with color shift
   // Bottom AO (Strong)
   const bottomAO = ctx.createLinearGradient(0, size * 0.85, 0, size)
   bottomAO.addColorStop(0, 'rgba(0, 0, 0, 0)')
-  bottomAO.addColorStop(1, 'rgba(0, 0, 0, 0.3)')
+  bottomAO.addColorStop(1, 'rgba(0, 0, 0, 0.25)') // Subtle reduce
   ctx.fillStyle = bottomAO
   ctx.fillRect(0, size * 0.85, size, size * 0.15)
   
@@ -97,13 +118,7 @@ function getPaintedShadingTexture() {
   ctx.fillStyle = rightAO
   ctx.fillRect(size * 0.85, 0, size * 0.15, size)
   
-  // Top/Left AO (Weak/None - illuminated)
-  // Subtle definition line only
-  const topDef = ctx.createLinearGradient(0, 0, 0, size * 0.05)
-  topDef.addColorStop(0, 'rgba(0, 0, 0, 0.05)')
-  topDef.addColorStop(1, 'rgba(0, 0, 0, 0)')
-  ctx.fillStyle = topDef
-  ctx.fillRect(0, 0, size, size * 0.05)
+  // Top Definition Line is covered by Bevel Highlight now
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
@@ -158,14 +173,15 @@ function getKeycapMaterial(baseColor) {
   // Get the painted shading texture (shared across all keys)
   const shadingMap = getPaintedShadingTexture()
   
-  // OPTIMIZED: MeshStandardMaterial instead of MeshPhysicalMaterial (+15-20 FPS)
-  // Removed: clearcoat, ior, specularIntensity (expensive PBR features)
+  // OPTIMIZED: MeshStandardMaterial tuned for "High-Quality PBT/ABS Plastic"
+  // Roughness 0.55 = smoother plastic
+  // EnvMapIntensity 0.9 = slightly less reflective
   const material = new THREE.MeshStandardMaterial({
     color: baseColor,
-    roughness: 0.5,
-    metalness: 0.0,
-    envMapIntensity: 0.6,
-    // Painted shading texture - no vertex color calculations needed
+    roughness: 0.55, 
+    metalness: 0.05, // Reduced metalness to avoid weird specular
+    envMapIntensity: 0.9, 
+    // Painted shading texture with grain & SSS
     map: shadingMap,
   })
   
@@ -303,8 +319,8 @@ export class Key {
   }
 
   createRealisticKeycapGeometry(width, depth, height, taperOffset, row = 3) {
-    // OPTIMIZED: Reduced segments 12→6 for fewer vertices (+5-10 FPS)
-    const segments = 6
+    // FIXED: Increased segments 6→10 to avoid "low poly" look
+    const segments = 10
     const geometry = new THREE.BoxGeometry(width, height, depth, segments, segments, segments)
     const position = geometry.attributes.position
     const vector = new THREE.Vector3()

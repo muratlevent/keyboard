@@ -148,64 +148,66 @@ class App {
   }
 
   initEnvironment() {
-    // Create high-quality studio HDR-style environment for realistic reflections
+    // HIGH QUALITY STUDIO ENVIRONMENT (Baked Realism)
+    // Create sharp reflections for plastic keycaps without real-time cost
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     pmremGenerator.compileEquirectangularShader();
 
-    // Higher resolution canvas for sharper reflections
+    // 2048x1024 resolution for crisp reflections
     const gradientCanvas = document.createElement("canvas");
-    gradientCanvas.width = 1024;
-    gradientCanvas.height = 512;
+    gradientCanvas.width = 2048;
+    gradientCanvas.height = 1024;
     const ctx = gradientCanvas.getContext("2d");
 
-    // Create studio backdrop gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, "#2a2a3e");
-    gradient.addColorStop(0.3, "#1e1e2d");
-    gradient.addColorStop(0.6, "#16161f");
-    gradient.addColorStop(1, "#0a0a0f");
-
+    // 1. Deep Dark Studio Background (Simulates empty studio void)
+    // Darker than before for higher contrast reflections
+    const gradient = ctx.createLinearGradient(0, 0, 0, 1024);
+    gradient.addColorStop(0, "#1a1a20");     // Ceiling (Dark Gray)
+    gradient.addColorStop(0.4, "#050508");    // Horizon (Almost Black)
+    gradient.addColorStop(0.6, "#08080a");    // Floor Horizon
+    gradient.addColorStop(1, "#101015");      // Floor foreground
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 1024, 512);
+    ctx.fillRect(0, 0, 2048, 1024);
 
-    // Add studio light sources for reflections
-    // Main softbox (top-left)
-    const softboxGradient1 = ctx.createRadialGradient(200, 80, 0, 200, 80, 120);
-    softboxGradient1.addColorStop(0, "rgba(255, 252, 245, 0.25)");
-    softboxGradient1.addColorStop(0.5, "rgba(255, 250, 240, 0.08)");
-    softboxGradient1.addColorStop(1, "rgba(255, 248, 235, 0)");
-    ctx.fillStyle = softboxGradient1;
-    ctx.fillRect(80, 20, 240, 140);
+    // 2. Key Light Softbox (Top-Left)
+    // Sharp rectangle for distinct "wet plastic" highlight
+    // Positioned to align with our baked directional texture
+    ctx.save();
+    ctx.translate(400, 200);
+    ctx.rotate(-0.1); 
+    const keyLight = ctx.createLinearGradient(0, 0, 0, 250);
+    keyLight.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    keyLight.addColorStop(0.1, "rgba(255, 250, 240, 0.9)");
+    keyLight.addColorStop(0.8, "rgba(255, 245, 230, 0.5)");
+    keyLight.addColorStop(1, "rgba(255, 240, 220, 0)");
+    ctx.fillStyle = keyLight;
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+    ctx.fillRect(-150, -125, 300, 250);
+    ctx.restore();
 
-    // Secondary softbox (right side)
-    const softboxGradient2 = ctx.createRadialGradient(
-      820,
-      120,
-      0,
-      820,
-      120,
-      100
-    );
-    softboxGradient2.addColorStop(0, "rgba(230, 240, 255, 0.15)");
-    softboxGradient2.addColorStop(0.6, "rgba(220, 235, 255, 0.05)");
-    softboxGradient2.addColorStop(1, "rgba(210, 230, 255, 0)");
-    ctx.fillStyle = softboxGradient2;
-    ctx.fillRect(720, 40, 200, 180);
+    // 3. Fill Light Softbox (Right)
+    // Cooler, softer, larger area for fill
+    ctx.save();
+    ctx.translate(1600, 300);
+    ctx.rotate(0.1); 
+    const fillLight = ctx.createRadialGradient(0, 0, 0, 0, 0, 400);
+    fillLight.addColorStop(0, "rgba(220, 235, 255, 0.4)");   // Cool blue center
+    fillLight.addColorStop(0.5, "rgba(200, 220, 255, 0.1)");
+    fillLight.addColorStop(1, "rgba(180, 200, 255, 0)");
+    ctx.fillStyle = fillLight;
+    ctx.fillRect(-300, -300, 600, 600);
+    ctx.restore();
 
-    // Rim light (back accent)
-    const rimGradient = ctx.createRadialGradient(512, 400, 0, 512, 400, 200);
-    rimGradient.addColorStop(0, "rgba(255, 220, 200, 0.08)");
-    rimGradient.addColorStop(1, "rgba(255, 210, 180, 0)");
-    ctx.fillStyle = rimGradient;
-    ctx.fillRect(312, 320, 400, 180);
-
-    // Subtle horizontal light bands for smooth reflections
-    ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
-    ctx.fillRect(0, 60, 1024, 30);
-    ctx.fillRect(0, 150, 1024, 20);
+    // 4. Rim Light Strip (Top/Back) - Adds definition to top edges
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "white";
+    ctx.fillRect(500, 50, 1000, 15);
 
     const envTexture = new THREE.CanvasTexture(gradientCanvas);
     envTexture.mapping = THREE.EquirectangularReflectionMapping;
+    envTexture.colorSpace = THREE.SRGBColorSpace; // Ensure correct color space
 
     this.scene.environment =
       pmremGenerator.fromEquirectangular(envTexture).texture;

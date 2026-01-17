@@ -50,19 +50,21 @@ export class Keyboard {
     
     const geometry = new THREE.BoxGeometry(width, height, depth)
     
-    // OPTIMIZED: MeshStandardMaterial (removed transmission/clearcoat)
+    // OPTIMIZED: MeshStandardMaterial (Standard ABS Plastic Case)
     const baseMaterial = new THREE.MeshStandardMaterial({
       color: this.colors.keyboardCase,
-      roughness: 0.25,
+      roughness: 0.5, // Matches keycaps
       metalness: 0.1,
+      envMapIntensity: 1.0,
     })
     
     const ribbedMaterial = new THREE.MeshStandardMaterial({
       color: this.colors.keyboardCase,
-      roughness: 0.35,
+      roughness: 0.6,
       metalness: 0.1,
+      envMapIntensity: 0.8,
       bumpMap: texture,
-      bumpScale: 0.002,
+      bumpScale: 0.004, // Stronger bump for more definition
     })
 
     const materials = [
