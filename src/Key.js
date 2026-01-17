@@ -76,7 +76,7 @@ function getPaintedShadingTexture() {
     size * 0.2,
     size * 0.2,
     size * 0.8,
-    size * 0.8
+    size * 0.8,
   );
   sssGradient.addColorStop(0.4, "rgba(255, 220, 200, 0)"); // Transparent
   sssGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.025)"); // Neutral, very subtle
@@ -105,7 +105,7 @@ function getPaintedShadingTexture() {
     0,
     0,
     size,
-    size * 0.7
+    size * 0.7,
   );
   shadowGradient.addColorStop(0, "rgba(10, 5, 20, 0.12)");
   shadowGradient.addColorStop(0.6, "rgba(20, 10, 30, 0.01)");
@@ -120,7 +120,7 @@ function getPaintedShadingTexture() {
     0,
     size,
     size,
-    size * 0.55
+    size * 0.55,
   );
   bottomRightLift.addColorStop(0, "rgba(255, 255, 255, 0.05)");
   bottomRightLift.addColorStop(1, "rgba(255, 255, 255, 0)");
@@ -253,7 +253,7 @@ export class Key {
         keyDepth,
         baseHeight,
         taperOffset,
-        this.row
+        this.row,
       );
       geometryCache.set(geomCacheKey, keycapGeometry);
     }
@@ -269,14 +269,14 @@ export class Key {
     keycapMaterial.color.setHSL(
       hsl.h,
       Math.max(0, Math.min(1, hsl.s + satVar)),
-      Math.max(0.1, Math.min(0.95, hsl.l + lightVar))
+      Math.max(0.1, Math.min(0.95, hsl.l + lightVar)),
     );
 
     // Subtle roughness variation
     const roughnessVar = (Math.random() - 0.5) * 0.06;
     keycapMaterial.roughness = Math.max(
       0.35,
-      Math.min(0.75, keycapMaterial.roughness + roughnessVar)
+      Math.min(0.75, keycapMaterial.roughness + roughnessVar),
     );
 
     const keycap = new THREE.Mesh(keycapGeometry, keycapMaterial);
@@ -323,7 +323,7 @@ export class Key {
 
     const shadowGeometry = new THREE.PlaneGeometry(
       keyWidth * shadowSize,
-      keyDepth * shadowSize
+      keyDepth * shadowSize,
     );
 
     // Use shared shadow texture (created once, reused by all keys)
@@ -355,7 +355,7 @@ export class Key {
       depth,
       segments,
       segments,
-      segments
+      segments,
     );
     const position = geometry.attributes.position;
     const vector = new THREE.Vector3();
@@ -428,7 +428,7 @@ export class Key {
         if (absX > currentW - topEdgeRadius) {
           const dx = absX - (currentW - topEdgeRadius);
           const dist = Math.sqrt(
-            dx * dx + (topEdgeRadius - dy) * (topEdgeRadius - dy)
+            dx * dx + (topEdgeRadius - dy) * (topEdgeRadius - dy),
           );
           if (dist > topEdgeRadius && y > halfH - topEdgeRadius) {
             const scale = topEdgeRadius / dist;
@@ -444,7 +444,7 @@ export class Key {
           // Combine X and Z for spherical-ish dish
           const scoopEffect = Math.max(
             0,
-            1 - (normX * normX * 0.7 + normZ * normZ * 0.3)
+            1 - (normX * normX * 0.7 + normZ * normZ * 0.3),
           );
           // Gradual falloff near edges
           if (y > halfH * 0.9) {
@@ -502,7 +502,7 @@ export class Key {
 
     // Determine text color based on keycap color
     const useDarkText = ["alphaKeys", "modKeys", "accentYellow"].includes(
-      this.colorName
+      this.colorName,
     );
     const textColor = useDarkText
       ? "rgba(60, 60, 65, 0.92)"
@@ -667,7 +667,7 @@ export class Key {
 
     // Determine text color
     const useDarkText = ["alphaKeys", "modKeys", "accentYellow"].includes(
-      this.colorName
+      this.colorName,
     );
     const textColor = useDarkText
       ? "rgba(60, 60, 65, 0.92)"
@@ -716,7 +716,7 @@ export class Key {
       const lightenedColor = new THREE.Color().setHSL(
         hsl.h,
         hsl.s,
-        Math.min(1, hsl.l + 0.2)
+        Math.min(1, hsl.l + 0.2),
       );
       this.keycapMesh.material.color.copy(lightenedColor);
     }
