@@ -1,132 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Mechanical Keyboard Simulator</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <div id="app">
-    <canvas id="keyboard-canvas"></canvas>
-    
-    <!-- Left Settings Panel -->
-    <aside class="settings-panel" id="settings-panel">
-      <button class="panel-toggle" id="panel-toggle" aria-label="Toggle settings panel">
-        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </button>
-      
-      <div class="panel-content">
-        <h2 class="panel-title">Settings</h2>
-        
-        <div class="setting-group">
-          <label for="os-layout">Keyboard Layout</label>
-          <select id="os-layout">
-            <option value="macos" selected>macOS</option>
-            <option value="windows">Windows</option>
-          </select>
-        </div>
-        
-        <div class="setting-group">
-          <label for="keycap-style">Keycap Style</label>
-          <select id="keycap-style">
-            <option value="rounded" selected>Rounded (Satin)</option>
-            <option value="sharp">Sharp (Vintage)</option>
-          </select>
-        </div>
-        
-        <div class="setting-group">
-          <label for="keyboard-theme">Theme</label>
-          <select id="keyboard-theme">
-            <option value="default" selected>Classic</option>
-            <option value="slate">Slate Gray</option>
-            <option value="arctic">Arctic Blue</option>
-            <option value="midnight">Midnight Navy</option>
-            <option value="sunset">Sunset Glow</option>
-            <option value="forest">Forest Green</option>
-            <option value="lavender">Lavender Dream</option>
-            <option value="rosegold">Rose Gold</option>
-            <option value="ocean">Ocean Depths</option>
-            <option value="monochrome">Monochrome</option>
-            <option value="retro">Retro Beige</option>
-            <option value="coral">Coral Reef</option>
-            <option value="olive">Olive Military</option>
-            <option value="burgundy">Burgundy Wine</option>
-            <option value="navy">Navy Blue</option>
-            <option value="charcoal">Charcoal</option>
-            <option value="copper">Copper Bronze</option>
-          </select>
-        </div>
-        
-        <div class="setting-group toggle-group">
-          <label for="dark-mode-toggle">Dark Mode</label>
-          <input type="checkbox" id="dark-mode-toggle">
-        </div>
-        
-        <div class="setting-group" id="room-light-group">
-          <label for="room-light">Room Light</label>
-          <div class="slider-container">
-            <input type="range" id="room-light" min="0" max="100" value="100">
-            <span class="slider-value" id="room-light-value">100%</span>
-          </div>
-        </div>
-        
-        <div class="setting-group">
-          <label for="switch-type">Switch Type</label>
-          <select id="switch-type">
-            <option value="red">Cherry MX Red</option>
-            <option value="blue" selected>Cherry MX Blue</option>
-            <option value="brown">Cherry MX Brown</option>
-            <option value="black">Cherry MX Black</option>
-          </select>
-        </div>
-        
-        <div class="settings-divider"></div>
-        
-        <h3 class="panel-subtitle">Lighting</h3>
-        
-        <div class="setting-group toggle-group">
-          <label for="lighting-toggle">Enable Lighting</label>
-          <input type="checkbox" id="lighting-toggle">
-        </div>
-        
-        <div class="setting-group" id="brightness-group">
-          <label for="lighting-brightness">Brightness</label>
-          <div class="slider-container">
-            <input type="range" id="lighting-brightness" min="0" max="100" value="50">
-            <span class="slider-value" id="brightness-value">50%</span>
-          </div>
-        </div>
-        
-        <div class="setting-group" id="color-group">
-          <label for="lighting-color">Custom Color</label>
-          <div class="color-picker-container">
-            <input type="color" id="lighting-color" value="#00ffff">
-            <span class="color-hex" id="color-hex">#00FFFF</span>
-          </div>
-        </div>
-        
-        <div class="setting-group" id="effect-group">
-          <label for="lighting-effect">Lighting Effect</label>
-          <select id="lighting-effect">
-            <option value="cycle" selected>Cycle (Rainbow)</option>
-            <option value="stable">Stable (Solid)</option>
-            <option value="pulse">Pulse (Breathing)</option>
-            <option value="reactive">Reactive (On Press)</option>
-            <option value="gemini">Gemini (Wave)</option>
-          </select>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Mechanical Keyboard Simulator</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="keyboard-canvas"></canvas>
+
+      <div
+        id="loading-overlay"
+        class="loading-overlay"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="loading-content">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Loading…</div>
         </div>
       </div>
-    </aside>
-    
-    <div class="info-panel">
-      <h1>Keyboard Simulator</h1>
-      <p>Press any key on your keyboard</p>
-      <p class="hint">Drag to rotate • Scroll to zoom</p>
+
+      <!-- Left Settings Panel -->
+      <aside class="settings-panel" id="settings-panel">
+        <button
+          class="panel-toggle"
+          id="panel-toggle"
+          aria-label="Toggle settings panel"
+        >
+          <svg
+            class="toggle-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+
+        <div class="panel-content">
+          <h2 class="panel-title">Settings</h2>
+
+          <div class="setting-group">
+            <label for="os-layout">Keyboard Layout</label>
+            <select id="os-layout">
+              <option value="macos" selected>macOS</option>
+              <option value="windows">Windows</option>
+            </select>
+          </div>
+
+          <div class="setting-group">
+            <label for="keyboard-theme">Theme</label>
+            <select id="keyboard-theme">
+              <option value="default" selected>Classic</option>
+              <option value="slate">Slate Gray</option>
+              <option value="arctic">Arctic Blue</option>
+              <option value="midnight">Midnight Navy</option>
+              <option value="sunset">Sunset Glow</option>
+              <option value="forest">Forest Green</option>
+              <option value="lavender">Lavender Dream</option>
+              <option value="rosegold">Rose Gold</option>
+              <option value="ocean">Ocean Depths</option>
+              <option value="monochrome">Monochrome</option>
+              <option value="retro">Retro Beige</option>
+              <option value="coral">Coral Reef</option>
+              <option value="olive">Olive Military</option>
+              <option value="burgundy">Burgundy Wine</option>
+              <option value="navy">Navy Blue</option>
+              <option value="charcoal">Charcoal</option>
+              <option value="copper">Copper Bronze</option>
+            </select>
+          </div>
+
+          <div class="setting-group toggle-group">
+            <label for="dark-mode-toggle">Dark Mode</label>
+            <input type="checkbox" id="dark-mode-toggle" />
+          </div>
+
+          <div class="setting-group" id="room-light-group">
+            <label for="room-light">Room Light</label>
+            <div class="slider-container">
+              <input
+                type="range"
+                id="room-light"
+                min="0"
+                max="100"
+                value="70"
+              />
+              <span class="slider-value" id="room-light-value">70%</span>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label for="switch-type">Switch Type</label>
+            <select id="switch-type">
+              <option value="red">Cherry MX Red</option>
+              <option value="blue" selected>Cherry MX Blue</option>
+              <option value="brown">Cherry MX Brown</option>
+              <option value="black">Cherry MX Black</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+
+      <div class="info-panel">
+        <h1>Keyboard Simulator</h1>
+        <p>Press any key on your keyboard</p>
+        <p class="hint">Drag to rotate • Scroll to zoom</p>
+      </div>
     </div>
-  </div>
-  <script type="module" src="/src/main.js"></script>
-</body>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>

@@ -30,6 +30,63 @@ body.dark-mode {
   display: block;
 }
 
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(232, 234, 237, 0.98) 0%, rgba(245, 247, 250, 0.98) 50%, rgba(232, 234, 237, 0.98) 100%);
+  color: #2c3e50;
+  z-index: 200;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+body.dark-mode .loading-overlay {
+  background: linear-gradient(135deg, rgba(13, 13, 15, 0.98) 0%, rgba(26, 26, 30, 0.98) 50%, rgba(13, 13, 15, 0.98) 100%);
+  color: #e0e0e0;
+}
+
+.loading-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.08);
+  border-top-color: rgba(44, 62, 80, 0.85);
+  animation: spin 0.9s linear infinite;
+}
+
+body.dark-mode .spinner {
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(224, 224, 224, 0.9);
+}
+
+.loading-text {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Left Settings Panel */
 .settings-panel {
   position: absolute;

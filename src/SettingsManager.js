@@ -2,18 +2,6 @@
 
 let currentLayout = 'macos' // Default to macOS
 let currentTheme = 'default' // Default theme
-let currentKeycapStyle = 'rounded' // Default keycap style ('rounded' or 'sharp')
-
-export function getKeycapStyle() {
-  return currentKeycapStyle
-}
-
-export function setKeycapStyle(style) {
-  if (['rounded', 'sharp'].includes(style)) {
-    currentKeycapStyle = style
-    window.dispatchEvent(new CustomEvent('stylechange', { detail: style }))
-  }
-}
 
 // =====================================
 // Keyboard Color Themes
@@ -331,44 +319,6 @@ export const KEYCAP_LABELS_WINDOWS = {
 export function getKeycapLabel(code, defaultLabel) {
   const labels = currentLayout === 'macos' ? KEYCAP_LABELS_MACOS : KEYCAP_LABELS_WINDOWS
   return labels[code] || defaultLabel
-}
-
-// Lighting Settings
-let lightingSettings = {
-  enabled: false,        // Default off
-  brightness: 50,        // 0-100
-  color: '#00ffff',      // Hex color
-  effect: 'cycle'        // stable, pulse, cycle, gemini
-}
-
-export function getLightingSettings() {
-  return { ...lightingSettings }
-}
-
-export function setLightingEnabled(enabled) {
-  lightingSettings.enabled = enabled
-  dispatchLightingChange()
-}
-
-export function setLightingBrightness(brightness) {
-  lightingSettings.brightness = Math.max(0, Math.min(100, brightness))
-  dispatchLightingChange()
-}
-
-export function setLightingColor(color) {
-  lightingSettings.color = color
-  dispatchLightingChange()
-}
-
-export function setLightingEffect(effect) {
-  lightingSettings.effect = effect
-  dispatchLightingChange()
-}
-
-function dispatchLightingChange() {
-  window.dispatchEvent(new CustomEvent('lightingchange', { 
-    detail: { ...lightingSettings }
-  }))
 }
 
 // Dark Mode
