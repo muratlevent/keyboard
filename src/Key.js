@@ -84,6 +84,20 @@ function getPaintedShadingTexture() {
   ctx.fillStyle = sssGradient;
   ctx.fillRect(0, 0, size, size);
 
+  // 3.1 Gentle center lift (adds clean plastic depth)
+  const centerLift = ctx.createRadialGradient(
+    size * 0.55,
+    size * 0.45,
+    0,
+    size * 0.55,
+    size * 0.45,
+    size * 0.7
+  );
+  centerLift.addColorStop(0, "rgba(255, 255, 255, 0.05)");
+  centerLift.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = centerLift;
+  ctx.fillRect(0, 0, size, size);
+
   // 4. Specular Bevel Highlight (Top-Right Edge)
   // Soft and subtle to avoid "drawn" look
   ctx.save();
@@ -141,6 +155,19 @@ function getPaintedShadingTexture() {
   leftAO.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = leftAO;
   ctx.fillRect(0, 0, size * 0.15, size);
+
+  // 6.1 Subtle top/right rim highlight (cleaner edge definition)
+  const topHighlight = ctx.createLinearGradient(0, 0, 0, size * 0.12);
+  topHighlight.addColorStop(0, "rgba(255, 255, 255, 0.10)");
+  topHighlight.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = topHighlight;
+  ctx.fillRect(0, 0, size, size * 0.12);
+
+  const rightHighlight = ctx.createLinearGradient(size * 0.88, 0, size, 0);
+  rightHighlight.addColorStop(0, "rgba(255, 255, 255, 0)");
+  rightHighlight.addColorStop(1, "rgba(255, 255, 255, 0.10)");
+  ctx.fillStyle = rightHighlight;
+  ctx.fillRect(size * 0.88, 0, size * 0.12, size);
 
   // Top Definition Line is covered by Bevel Highlight now
 
@@ -332,6 +359,7 @@ export class Key {
     const shadowMaterial = new THREE.MeshBasicMaterial({
       map: shadowTexture,
       transparent: true,
+      opacity: 0.7,
       depthWrite: false,
       blending: THREE.MultiplyBlending,
     });
