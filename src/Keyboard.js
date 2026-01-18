@@ -37,6 +37,9 @@ export class Keyboard {
     // Center the keyboard
     this.group.position.x = -KEYBOARD_WIDTH / 2 - this.casePadding - this.sidePanelThickness
     this.group.position.z = -KEYBOARD_HEIGHT / 2 - this.casePadding
+    
+    // Ensure keyboard is not rotated (fix visual skew)
+    this.group.rotation.y = 0
   }
 
   createCaseBase() {
