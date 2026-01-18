@@ -64,10 +64,11 @@ function getPaintedShadingTexture() {
   }
   ctx.putImageData(imageData, 0, 0);
 
-  // 2. Main Face Gradient (Light from Top-Right → Shadow to Bottom-Left)
-  const faceGradient = ctx.createLinearGradient(size, 0, 0, size);
-  faceGradient.addColorStop(0, "rgba(255, 255, 255, 0.08)"); // Highlight (right/top)
-  faceGradient.addColorStop(1, "rgba(0, 0, 0, 0.04)"); // Shadow (left/bottom)
+  // 2. Main Face Gradient (Light from Right → Shadow to Left)
+  // Adjusted for "Right Side Lighting" as requested
+  const faceGradient = ctx.createLinearGradient(size, size/2, 0, size/2);
+  faceGradient.addColorStop(0, "rgba(255, 255, 255, 0.15)"); // Brighter highlight on the right
+  faceGradient.addColorStop(1, "rgba(0, 0, 0, 0.05)"); // Subtle shadow on the left
   ctx.fillStyle = faceGradient;
   ctx.fillRect(0, 0, size, size);
 
@@ -98,34 +99,33 @@ function getPaintedShadingTexture() {
   ctx.fillStyle = centerLift;
   ctx.fillRect(0, 0, size, size);
 
-  // 4. Specular Bevel Highlight (Top-Right Edge)
-  // Soft and subtle to avoid "drawn" look
+  // 4. Specular Bevel Highlight (Right Edge)
+  // Positioned on the right to match light source
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(size, 0);
+  ctx.moveTo(size, 0);
   ctx.lineTo(size, size);
-  ctx.lineWidth = size * 0.03;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-  ctx.shadowBlur = 3;
-  ctx.shadowColor = "rgba(255, 255, 255, 0.18)";
+  ctx.lineWidth = size * 0.035;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)"; // Sparkly highlight
+  ctx.shadowBlur = 4;
+  ctx.shadowColor = "rgba(255, 255, 255, 0.25)";
   ctx.stroke();
   ctx.restore();
 
-  // 5. Deep Shadow (Bottom-Left Edge/Corner)
+  // 5. Deep Shadow (Left Edge/Corner) - Shifted to left side
   const shadowGradient = ctx.createRadialGradient(
     0,
-    size,
+    size/2,
     0,
     0,
-    size,
+    size/2,
     size * 0.7,
   );
-  shadowGradient.addColorStop(0, "rgba(10, 5, 20, 0.12)");
+  shadowGradient.addColorStop(0, "rgba(10, 5, 20, 0.08)"); // Softer shadow on the left
   shadowGradient.addColorStop(0.6, "rgba(20, 10, 30, 0.01)");
   shadowGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = shadowGradient;
-  ctx.fillRect(0, size * 0.3, size * 0.7, size * 0.7);
+  ctx.fillRect(0, 0, size * 0.4, size);
 
   // 5.1 Subtle lift (Bottom-Right Corner)
   const bottomRightLift = ctx.createRadialGradient(
@@ -220,14 +220,14 @@ function getKeycapMaterial(baseColor) {
   // Get the painted shading texture (shared across all keys)
   const shadingMap = getPaintedShadingTexture();
 
-  // OPTIMIZED: MeshStandardMaterial tuned for "High-Quality PBT/ABS Plastic"
-  // Roughness 0.55 = smoother plastic
-  // EnvMapIntensity 0.9 = slightly less reflective
+  // OPTIMIZED: MeshStandardMaterial tuned for "Soft Matte Plastic"
+  // Roughness 0.68 = matte finish like reference render
+  // EnvMapIntensity 0.7 = subtle reflections
   const material = new THREE.MeshStandardMaterial({
     color: baseColor,
-    roughness: 0.55,
-    metalness: 0.05, // Reduced metalness to avoid weird specular
-    envMapIntensity: 0.9,
+    roughness: 0.68,
+    metalness: 0.02, // Very low metalness for pure plastic look
+    envMapIntensity: 0.7,
     // Painted shading texture with grain & SSS
     map: shadingMap,
   });
@@ -367,7 +367,7 @@ export class Key {
     const shadowMesh = new THREE.Mesh(shadowGeometry, shadowMaterial);
     shadowMesh.rotation.x = -Math.PI / 2; // Lay flat
     shadowMesh.position.y = -0.0005; // Just below the key base
-    shadowMesh.position.x = shadowOffsetX; // Fixed offset for directional light
+    shadowMesh.position.x = -shadowOffsetX; // SHIFTED LEFT (light from right)
     shadowMesh.position.z = shadowOffsetZ;
 
     this.fakeShadowMesh = shadowMesh;
@@ -392,10 +392,10 @@ export class Key {
     const halfD = depth / 2;
     const halfH = height / 2;
 
-    // Parameters for rounded style
-    const cornerRadius = 0.0025;
-    const topEdgeRadius = 0.0018;
-    const scoopDepth = 0.0008;
+    // Parameters for soft rounded style (matching reference render)
+    const cornerRadius = 0.0038;
+    const topEdgeRadius = 0.0030;
+    const scoopDepth = 0.0004; // Reduced scoop for flatter top surface
 
     // Row-based profile adjustment
     const rowHeightAdjust = {
@@ -533,7 +533,7 @@ export class Key {
       this.colorName,
     );
     const textColor = useDarkText
-      ? "rgba(60, 60, 65, 0.92)"
+      ? "rgba(50, 55, 60, 0.95)" // Darker anthracite for cleaner look
       : "rgba(255, 255, 255, 0.95)";
 
     ctx.fillStyle = textColor;
@@ -642,15 +642,15 @@ export class Key {
       opacity: 1.0,
       depthWrite: false,
       polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits: -4,
+      polygonOffsetFactor: -12, // Increased for zoom visibility
+      polygonOffsetUnits: -12,
     });
 
     const topFace = new THREE.Mesh(topGeometry, topMaterial);
     topFace.rotation.x = -Math.PI / 2;
     // Place legend exactly on keycap surface - account for scoop depth
-    // Use very small offset (0.00005) to sit flush against surface
-    topFace.position.y = height - 0.00005;
+    // Increased offset for better visibility during zoom
+    topFace.position.y = height + 0.00015;
     this.legendMesh = topFace;
     this.legendCanvas = canvas;
     this.legendBaseColor = baseColor;

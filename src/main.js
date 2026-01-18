@@ -120,17 +120,17 @@ class App {
     this.scene.add(keyLight);
     this.sceneLights.push({ light: keyLight, baseIntensity: 1.0 });
 
-    // Fill light (front-left) - cool
-    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.4);
+    // Fill light (front-left) - Dimmed as it's now the shadowed side
+    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.2);
     fillLight.position.set(-0.5, 0.5, 0.5);
     this.scene.add(fillLight);
-    this.sceneLights.push({ light: fillLight, baseIntensity: 0.4 });
-
-    // Fill light from right for balanced lighting
-    const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 0.35);
-    secondaryLight.position.set(0.5, 0.5, 0.3);
+    this.sceneLights.push({ light: fillLight, baseIntensity: 0.2 });
+ 
+    // MAIN Light from Right (The new primary light source)
+    const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 1.2);
+    secondaryLight.position.set(1.5, 1.0, 0.5);
     this.scene.add(secondaryLight);
-    this.sceneLights.push({ light: secondaryLight, baseIntensity: 0.35 });
+    this.sceneLights.push({ light: secondaryLight, baseIntensity: 1.2 });
 
     // Top light for key highlights
     const topLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -169,33 +169,31 @@ class App {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 2048, 1024);
 
-    // 2. Key Light Softbox (Top-Left)
-    // Sharp rectangle for distinct "wet plastic" highlight
-    // Positioned to align with our baked directional texture
+    // 2. Key Light Softbox (Top-RIGHT)
+    // Swapped position to match the right-side lighting request
     ctx.save();
-    ctx.translate(400, 200);
-    ctx.rotate(-0.1); 
-    const keyLight = ctx.createLinearGradient(0, 0, 0, 250);
-    keyLight.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-    keyLight.addColorStop(0.1, "rgba(255, 250, 240, 0.9)");
-    keyLight.addColorStop(0.8, "rgba(255, 245, 230, 0.5)");
-    keyLight.addColorStop(1, "rgba(255, 240, 220, 0)");
-    ctx.fillStyle = keyLight;
+    ctx.translate(1600, 200); // Moved to right side
+    ctx.rotate(0.1); 
+    const keyLightRight = ctx.createLinearGradient(0, 0, 0, 250);
+    keyLightRight.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    keyLightRight.addColorStop(0.1, "rgba(255, 250, 240, 0.9)");
+    keyLightRight.addColorStop(0.8, "rgba(255, 245, 230, 0.5)");
+    keyLightRight.addColorStop(1, "rgba(255, 240, 220, 0)");
+    ctx.fillStyle = keyLightRight;
     ctx.shadowBlur = 40;
     ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
     ctx.fillRect(-150, -125, 300, 250);
     ctx.restore();
-
-    // 3. Fill Light Softbox (Right)
-    // Cooler, softer, larger area for fill
+ 
+    // 3. Fill Light Softbox (LEFT) - Swapped
     ctx.save();
-    ctx.translate(1600, 300);
-    ctx.rotate(0.1); 
-    const fillLight = ctx.createRadialGradient(0, 0, 0, 0, 0, 400);
-    fillLight.addColorStop(0, "rgba(220, 235, 255, 0.4)");   // Cool blue center
-    fillLight.addColorStop(0.5, "rgba(200, 220, 255, 0.1)");
-    fillLight.addColorStop(1, "rgba(180, 200, 255, 0)");
-    ctx.fillStyle = fillLight;
+    ctx.translate(400, 300); // Moved to left side
+    ctx.rotate(-0.1); 
+    const fillLightLeft = ctx.createRadialGradient(0, 0, 0, 0, 0, 400);
+    fillLightLeft.addColorStop(0, "rgba(220, 235, 255, 0.4)");
+    fillLightLeft.addColorStop(0.5, "rgba(200, 220, 255, 0.1)");
+    fillLightLeft.addColorStop(1, "rgba(180, 200, 255, 0)");
+    ctx.fillStyle = fillLightLeft;
     ctx.fillRect(-300, -300, 600, 600);
     ctx.restore();
 
