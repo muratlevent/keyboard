@@ -16,11 +16,6 @@ class App {
     this.loadingOverlay = document.getElementById("loading-overlay");
     this.isReady = false;
     
-    // FPS tracking
-    this.fpsFrames = 0;
-    this.fpsTime = 0;
-    this.fpsDisplay = null;
-
     this.bootstrap();
   }
 
@@ -56,8 +51,8 @@ class App {
     this.setupEventListeners();
     this.setupUI();
 
-    // Apply initial room light intensity (70%)
-    this.setRoomLightIntensity(70);
+    // Apply initial room light intensity (60%)
+    this.setRoomLightIntensity(60);
 
     this.initKeyboard();
     this.initPostProcessing();
@@ -408,32 +403,8 @@ class App {
         if (roomLightValue) roomLightValue.textContent = `${value}%`;
       });
     }
-    
-    // Create FPS counter display
-    this.createFPSCounter();
   }
   
-  createFPSCounter() {
-    const fpsDiv = document.createElement('div');
-    fpsDiv.id = 'fps-counter';
-    fpsDiv.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #00ff00;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 14px;
-      font-weight: bold;
-      z-index: 10000;
-      pointer-events: none;
-    `;
-    fpsDiv.textContent = 'FPS: --';
-    document.body.appendChild(fpsDiv);
-    this.fpsDisplay = fpsDiv;
-  }
 
   initPostProcessing() {
     // Create effect composer for post-processing
@@ -490,20 +461,6 @@ class App {
 
     const deltaTime = this.clock.getDelta();
     
-    // Update FPS counter
-    this.fpsFrames++;
-    this.fpsTime += deltaTime;
-    if (this.fpsTime >= 0.5) { // Update every 0.5 seconds
-      const fps = Math.round(this.fpsFrames / this.fpsTime);
-      if (this.fpsDisplay) {
-        this.fpsDisplay.textContent = `FPS: ${fps}`;
-        // Color code: green > 55, yellow > 30, red <= 30
-        this.fpsDisplay.style.color = fps > 55 ? '#00ff00' : fps > 30 ? '#ffff00' : '#ff4444';
-      }
-      this.fpsFrames = 0;
-      this.fpsTime = 0;
-    }
-
     // Update keyboard animations
     this.keyboard.update(deltaTime);
 
