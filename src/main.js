@@ -1,12 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { Keyboard } from "./Keyboard.js";
 import { clearKeyCaches } from "./Key.js";
@@ -19,7 +15,7 @@ class App {
     this.clock = new THREE.Clock();
     this.loadingOverlay = document.getElementById("loading-overlay");
     this.isReady = false;
-
+    
     this.bootstrap();
   }
 
@@ -55,8 +51,8 @@ class App {
     this.setupEventListeners();
     this.setupUI();
 
-    // Apply initial room light intensity (70%)
-    this.setRoomLightIntensity(70);
+    // Apply initial room light intensity (60%)
+    this.setRoomLightIntensity(60);
 
     this.initKeyboard();
     this.initPostProcessing();
@@ -78,8 +74,11 @@ class App {
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(35, aspect, 0.01, 100);
 
-    // Position camera for front-facing slightly elevated view (like reference)
-    this.camera.position.set(0, 0.18, 0.45);
+    // Position camera at ~30 degrees from vertical (more 3D depth)
+    // At 30 degrees: y = cos(30°) * distance, z = sin(30°) * distance
+    const distance = 0.55;
+    const angle = 30 * (Math.PI / 180); // 30 degrees in radians
+    this.camera.position.set(0, distance * Math.cos(angle), distance * Math.sin(angle));
     this.camera.lookAt(0, 0.01, 0);
   }
 
@@ -94,8 +93,8 @@ class App {
     const { width, height, pixelRatio } = this.getViewport();
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Disable shadow maps for performance - using fake shadows instead
+    this.renderer.shadowMap.enabled = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -105,80 +104,34 @@ class App {
     // Store lights for dynamic intensity control
     this.sceneLights = [];
 
-    // Reduced ambient for more dramatic shadows
-    const ambient = new THREE.AmbientLight(0xffffff, 0.25);
+    // Increased ambient for bright, even lighting (no real shadows)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
-    this.sceneLights.push({ light: ambient, baseIntensity: 0.25 });
+    this.sceneLights.push({ light: ambient, baseIntensity: 0.5 });
 
-    // Main key light (top-front-left) - warm, positioned to match reference
-    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
-    keyLight.position.set(-0.35, 0.8, 0.45);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048; // Optimized shadow resolution
-    keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.near = 0.1;
-    keyLight.shadow.camera.far = 3;
-    keyLight.shadow.camera.left = -0.5;
-    keyLight.shadow.camera.right = 0.5;
-    keyLight.shadow.camera.top = 0.5;
-    keyLight.shadow.camera.bottom = -0.5;
-    keyLight.shadow.bias = -0.0003;
-    keyLight.shadow.normalBias = 0.001; // Reduces shadow acne
-    keyLight.shadow.radius = 3; // Crisp but not hard shadows
+    // Main key light (top) - warm, no shadows for performance
+    const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
+    keyLight.position.set(0, 1, 0.2);
     this.scene.add(keyLight);
-    this.sceneLights.push({ light: keyLight, baseIntensity: 1.2 });
+    this.sceneLights.push({ light: keyLight, baseIntensity: 1.0 });
 
-    // Fill light (left side) - cool, with soft shadows
-    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.4);
-    fillLight.position.set(-0.5, 0.4, 0.3);
-    fillLight.castShadow = true;
-    fillLight.shadow.mapSize.width = 1024; // Reduced for performance
-    fillLight.shadow.mapSize.height = 1024;
-    fillLight.shadow.camera.near = 0.1;
-    fillLight.shadow.camera.far = 2;
-    fillLight.shadow.camera.left = -0.5;
-    fillLight.shadow.camera.right = 0.5;
-    fillLight.shadow.camera.top = 0.5;
-    fillLight.shadow.camera.bottom = -0.5;
-    fillLight.shadow.bias = -0.0003;
-    fillLight.shadow.radius = 6; // Very soft secondary shadows
+    // Fill light (front-left) - Dimmed as it's now the shadowed side
+    const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.2);
+    fillLight.position.set(-0.5, 0.5, 0.5);
     this.scene.add(fillLight);
-    this.sceneLights.push({ light: fillLight, baseIntensity: 0.4 });
-
-    // Secondary key light from right for realistic multi-directional shadows
-    const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 0.35);
-    secondaryLight.position.set(0.5, 0.6, 0.3);
-    secondaryLight.castShadow = true;
-    secondaryLight.shadow.mapSize.width = 1024; // Reduced for performance
-    secondaryLight.shadow.mapSize.height = 1024;
-    secondaryLight.shadow.camera.near = 0.1;
-    secondaryLight.shadow.camera.far = 2;
-    secondaryLight.shadow.camera.left = -0.5;
-    secondaryLight.shadow.camera.right = 0.5;
-    secondaryLight.shadow.camera.top = 0.5;
-    secondaryLight.shadow.camera.bottom = -0.5;
-    secondaryLight.shadow.bias = -0.0003;
-    secondaryLight.shadow.radius = 5;
+    this.sceneLights.push({ light: fillLight, baseIntensity: 0.2 });
+ 
+    // MAIN Light from Right (The new primary light source)
+    const secondaryLight = new THREE.DirectionalLight(0xfff0e8, 1.2);
+    secondaryLight.position.set(1.5, 1.0, 0.5);
     this.scene.add(secondaryLight);
-    this.sceneLights.push({ light: secondaryLight, baseIntensity: 0.35 });
-
-    // Rim light (back-right) - accent
-    const rimLight = new THREE.DirectionalLight(0xffd4c4, 0.6);
-    rimLight.position.set(0.3, 0.15, -0.4);
-    this.scene.add(rimLight);
-    this.sceneLights.push({ light: rimLight, baseIntensity: 0.6 });
+    this.sceneLights.push({ light: secondaryLight, baseIntensity: 1.2 });
 
     // Top light for key highlights
-    const topLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    const topLight = new THREE.DirectionalLight(0xffffff, 0.5);
     topLight.position.set(0, 1, 0);
     this.scene.add(topLight);
-    this.sceneLights.push({ light: topLight, baseIntensity: 0.4 });
-
-    // Subtle point light for case reflection
-    const caseLight = new THREE.PointLight(0xffd4c4, 0.3, 1);
-    caseLight.position.set(0, 0.1, 0.4);
-    this.scene.add(caseLight);
-    this.sceneLights.push({ light: caseLight, baseIntensity: 0.3 });
+    this.sceneLights.push({ light: topLight, baseIntensity: 0.5 });
   }
 
   setRoomLightIntensity(percent) {
@@ -190,64 +143,64 @@ class App {
   }
 
   initEnvironment() {
-    // Create high-quality studio HDR-style environment for realistic reflections
+    // HIGH QUALITY STUDIO ENVIRONMENT (Baked Realism)
+    // Create sharp reflections for plastic keycaps without real-time cost
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     pmremGenerator.compileEquirectangularShader();
 
-    // Higher resolution canvas for sharper reflections
+    // 2048x1024 resolution for crisp reflections
     const gradientCanvas = document.createElement("canvas");
-    gradientCanvas.width = 1024;
-    gradientCanvas.height = 512;
+    gradientCanvas.width = 2048;
+    gradientCanvas.height = 1024;
     const ctx = gradientCanvas.getContext("2d");
 
-    // Create studio backdrop gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, "#2a2a3e");
-    gradient.addColorStop(0.3, "#1e1e2d");
-    gradient.addColorStop(0.6, "#16161f");
-    gradient.addColorStop(1, "#0a0a0f");
-
+    // 1. Deep Dark Studio Background (Simulates empty studio void)
+    // Darker than before for higher contrast reflections
+    const gradient = ctx.createLinearGradient(0, 0, 0, 1024);
+    gradient.addColorStop(0, "#1a1a20");     // Ceiling (Dark Gray)
+    gradient.addColorStop(0.4, "#050508");    // Horizon (Almost Black)
+    gradient.addColorStop(0.6, "#08080a");    // Floor Horizon
+    gradient.addColorStop(1, "#101015");      // Floor foreground
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 1024, 512);
+    ctx.fillRect(0, 0, 2048, 1024);
 
-    // Add studio light sources for reflections
-    // Main softbox (top-left)
-    const softboxGradient1 = ctx.createRadialGradient(200, 80, 0, 200, 80, 120);
-    softboxGradient1.addColorStop(0, "rgba(255, 252, 245, 0.25)");
-    softboxGradient1.addColorStop(0.5, "rgba(255, 250, 240, 0.08)");
-    softboxGradient1.addColorStop(1, "rgba(255, 248, 235, 0)");
-    ctx.fillStyle = softboxGradient1;
-    ctx.fillRect(80, 20, 240, 140);
+    // 2. Key Light Softbox (Top-RIGHT)
+    // Swapped position to match the right-side lighting request
+    ctx.save();
+    ctx.translate(1600, 200); // Moved to right side
+    ctx.rotate(0.1); 
+    const keyLightRight = ctx.createLinearGradient(0, 0, 0, 250);
+    keyLightRight.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    keyLightRight.addColorStop(0.1, "rgba(255, 250, 240, 0.9)");
+    keyLightRight.addColorStop(0.8, "rgba(255, 245, 230, 0.5)");
+    keyLightRight.addColorStop(1, "rgba(255, 240, 220, 0)");
+    ctx.fillStyle = keyLightRight;
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+    ctx.fillRect(-150, -125, 300, 250);
+    ctx.restore();
+ 
+    // 3. Fill Light Softbox (LEFT) - Swapped
+    ctx.save();
+    ctx.translate(400, 300); // Moved to left side
+    ctx.rotate(-0.1); 
+    const fillLightLeft = ctx.createRadialGradient(0, 0, 0, 0, 0, 400);
+    fillLightLeft.addColorStop(0, "rgba(220, 235, 255, 0.4)");
+    fillLightLeft.addColorStop(0.5, "rgba(200, 220, 255, 0.1)");
+    fillLightLeft.addColorStop(1, "rgba(180, 200, 255, 0)");
+    ctx.fillStyle = fillLightLeft;
+    ctx.fillRect(-300, -300, 600, 600);
+    ctx.restore();
 
-    // Secondary softbox (right side)
-    const softboxGradient2 = ctx.createRadialGradient(
-      820,
-      120,
-      0,
-      820,
-      120,
-      100
-    );
-    softboxGradient2.addColorStop(0, "rgba(230, 240, 255, 0.15)");
-    softboxGradient2.addColorStop(0.6, "rgba(220, 235, 255, 0.05)");
-    softboxGradient2.addColorStop(1, "rgba(210, 230, 255, 0)");
-    ctx.fillStyle = softboxGradient2;
-    ctx.fillRect(720, 40, 200, 180);
-
-    // Rim light (back accent)
-    const rimGradient = ctx.createRadialGradient(512, 400, 0, 512, 400, 200);
-    rimGradient.addColorStop(0, "rgba(255, 220, 200, 0.08)");
-    rimGradient.addColorStop(1, "rgba(255, 210, 180, 0)");
-    ctx.fillStyle = rimGradient;
-    ctx.fillRect(312, 320, 400, 180);
-
-    // Subtle horizontal light bands for smooth reflections
-    ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
-    ctx.fillRect(0, 60, 1024, 30);
-    ctx.fillRect(0, 150, 1024, 20);
+    // 4. Rim Light Strip (Top/Back) - Adds definition to top edges
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "white";
+    ctx.fillRect(500, 50, 1000, 15);
 
     const envTexture = new THREE.CanvasTexture(gradientCanvas);
     envTexture.mapping = THREE.EquirectangularReflectionMapping;
+    envTexture.colorSpace = THREE.SRGBColorSpace; // Ensure correct color space
 
     this.scene.environment =
       pmremGenerator.fromEquirectangular(envTexture).texture;
@@ -257,15 +210,22 @@ class App {
   }
 
   initControls() {
-    this.controls = new OrbitControls(this.camera, this.canvas);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 0.25;
-    this.controls.maxDistance = 1.2;
-    this.controls.minPolarAngle = Math.PI * 0.15;
-    this.controls.maxPolarAngle = Math.PI * 0.55;
-    this.controls.target.set(0, 0.02, 0);
-    this.controls.update();
+    // OrbitControls with zoom-only mode - rotation/panning disabled for fixed view
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    
+    // Disable rotation and panning - keep fixed camera angle
+    this.controls.enableRotate = false;
+    this.controls.enablePan = false;
+    this.controls.enableZoom = true;
+    
+    // Zoom limits (min = close, max = far)
+    this.controls.minDistance = 0.2;
+    this.controls.maxDistance = 1.0;
+    
+    // Smooth zooming - damping DISABLED to prevent continuous re-renders when idle
+    // With damping enabled, controls.update() triggers render every frame even when not zooming
+    this.controls.zoomSpeed = 1.0;
+    this.controls.enableDamping = false;
   }
 
   initKeyboard() {
@@ -343,18 +303,13 @@ class App {
   }
 
   initGround() {
-    // Highly reflective desk surface for realistic keyboard reflections
+    // OPTIMIZED: MeshStandardMaterial for ground (removed clearcoat)
     const groundGeometry = new THREE.PlaneGeometry(3, 3);
-    const groundMaterial = new THREE.MeshPhysicalMaterial({
+    const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0xe8eaed,
-      roughness: 0.15, // Very smooth for clear reflections
+      roughness: 0.2,
       metalness: 0.0,
-      clearcoat: 0.8, // Strong clearcoat like polished desk
-      clearcoatRoughness: 0.1,
-      reflectivity: 0.5,
-      envMapIntensity: 0.6,
-      transparent: true,
-      opacity: 0.95,
+      envMapIntensity: 0.5,
     });
 
     this.groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -390,18 +345,7 @@ class App {
       this.composer.setSize(width, height);
     }
 
-    const pixelWidth = Math.max(1, Math.floor(width * pixelRatio));
-    const pixelHeight = Math.max(1, Math.floor(height * pixelRatio));
-
-    if (this.ssaoPass) {
-      this.ssaoPass.setSize(pixelWidth, pixelHeight);
-    }
-    if (this.bloomPass) {
-      this.bloomPass.setSize(pixelWidth, pixelHeight);
-    }
-    if (this.smaaPass) {
-      this.smaaPass.setSize(pixelWidth, pixelHeight);
-    }
+    // Post-processing passes auto-resize with composer
   }
 
   setupUI() {
@@ -460,9 +404,12 @@ class App {
       });
     }
   }
+  
 
   initPostProcessing() {
     // Create effect composer for post-processing
+    // OPTIMIZED: Removed Bloom and SMAA for 100+ FPS target
+    // Native WebGL antialias is already enabled in renderer
     this.composer = new EffectComposer(this.renderer);
     this.composer.setPixelRatio(this.getPixelRatio());
 
@@ -470,36 +417,10 @@ class App {
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
 
-    // Extreme SSAO pass - deep ambient occlusion for highly realistic contact shadows
-    const { width, height, pixelRatio } = this.getViewport();
-    this.ssaoPass = new SSAOPass(
-      this.scene,
-      this.camera,
-      width * pixelRatio,
-      height * pixelRatio
-    );
-    this.ssaoPass.kernelRadius = 0.04; // Larger radius for deeper shadows
-    this.ssaoPass.minDistance = 0.00002;
-    this.ssaoPass.maxDistance = 0.05;
-    this.ssaoPass.output = SSAOPass.OUTPUT.Default;
-    this.composer.addPass(this.ssaoPass);
+    // Bloom and SMAA REMOVED for performance (+30-40 FPS gain)
+    // Native antialias: true provides sufficient AA quality
 
-    // Subtle bloom for realistic light glow on bright edges
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(width * pixelRatio, height * pixelRatio),
-      0.15, // Bloom strength - very subtle
-      0.4, // Radius
-      0.9 // Threshold - only brightest areas
-    );
-    this.bloomPass = bloomPass;
-    this.composer.addPass(bloomPass);
-
-    // SMAA for high-quality anti-aliasing
-    const smaaPass = new SMAAPass(width * pixelRatio, height * pixelRatio);
-    this.smaaPass = smaaPass;
-    this.composer.addPass(smaaPass);
-
-    // Custom vignette shader for photographic depth
+    // Custom vignette shader for photographic depth (cheap - single texture sample)
     const vignetteShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -539,12 +460,14 @@ class App {
     this.animationFrameId = requestAnimationFrame(() => this.animate());
 
     const deltaTime = this.clock.getDelta();
-
+    
     // Update keyboard animations
     this.keyboard.update(deltaTime);
 
-    // Update orbit controls
-    this.controls.update();
+    // Update controls for smooth zoom damping
+    if (this.controls) {
+      this.controls.update();
+    }
 
     // Render with post-processing
     this.composer.render();

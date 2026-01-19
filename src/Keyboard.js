@@ -37,6 +37,9 @@ export class Keyboard {
     // Center the keyboard
     this.group.position.x = -KEYBOARD_WIDTH / 2 - this.casePadding - this.sidePanelThickness
     this.group.position.z = -KEYBOARD_HEIGHT / 2 - this.casePadding
+    
+    // Ensure keyboard is not rotated (fix visual skew)
+    this.group.rotation.y = 0
   }
 
   createCaseBase() {
@@ -50,21 +53,21 @@ export class Keyboard {
     
     const geometry = new THREE.BoxGeometry(width, height, depth)
     
-    // Use theme colors for the case
-    const baseMaterial = new THREE.MeshPhysicalMaterial({
+    // OPTIMIZED: MeshStandardMaterial (Standard ABS Plastic Case)
+    const baseMaterial = new THREE.MeshStandardMaterial({
       color: this.colors.keyboardCase,
-      roughness: 0.2,
+      roughness: 0.5, // Matches keycaps
       metalness: 0.1,
-      transmission: 0.1,
-      thickness: 0.02,
+      envMapIntensity: 1.0,
     })
     
-    const ribbedMaterial = new THREE.MeshPhysicalMaterial({
+    const ribbedMaterial = new THREE.MeshStandardMaterial({
       color: this.colors.keyboardCase,
-      roughness: 0.3,
+      roughness: 0.6,
       metalness: 0.1,
+      envMapIntensity: 0.8,
       bumpMap: texture,
-      bumpScale: 0.002,
+      bumpScale: 0.004, // Stronger bump for more definition
     })
 
     const materials = [
@@ -157,12 +160,10 @@ export class Keyboard {
       return new THREE.ExtrudeGeometry(shape, extrudeSettings)
     }
     
-    const sideMaterial = new THREE.MeshPhysicalMaterial({
+    const sideMaterial = new THREE.MeshStandardMaterial({
       color: this.colors.keyboardCase,
-      roughness: 0.15,
+      roughness: 0.2,
       metalness: 0.05,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.2,
     })
     
     // Left side panel
@@ -237,10 +238,10 @@ export class Keyboard {
     const depth = KEYBOARD_HEIGHT + this.casePadding - 0.002
     
     const geometry = new THREE.BoxGeometry(width, this.plateHeight, depth)
-    const material = new THREE.MeshPhysicalMaterial({
-      color: 0x1a1a1a,  // Always black - makes keys more visible
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
       roughness: 0.4,
-      metalness: 0.7,
+      metalness: 0.6,
     })
     
     const plate = new THREE.Mesh(geometry, material)

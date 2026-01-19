@@ -127,6 +127,18 @@ export const KEYBOARD_THEMES = {
       caseDark: 0xd0d0d0,      // Gray plate
     }
   },
+  minimal: {
+    name: 'Minimal',
+    colors: {
+      alphaKeys: 0xe8e8e8,     // Soft light gray
+      modKeys: 0xe0e0e0,       // Same tone gray
+      accentEsc: 0xe5e5e5,     // Uniform gray (no accent)
+      accentEnter: 0xe2e2e2,   // Uniform gray (no accent)
+      accentSpace: 0xebebeb,   // Slightly lighter spacebar
+      keyboardCase: 0xf5f5f5,  // Very light gray case
+      caseDark: 0xe8e8e8,      // Light gray plate
+    }
+  },
   retro: {
     name: 'Retro Beige',
     colors: {
