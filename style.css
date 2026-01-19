@@ -90,19 +90,16 @@ body.dark-mode .spinner {
 /* Left Settings Panel */
 .settings-panel {
   position: absolute;
-  top: 50%;
+  bottom: 0;
   left: 0;
-  transform: translateY(-50%);
-  width: 240px;
+  width: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-left: none;
-  border-radius: 0 16px 16px 0;
-  box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease, border-color 0.5s ease;
-  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease, border-color 0.5s ease;
 }
 
 body.dark-mode .settings-panel {
@@ -143,19 +140,20 @@ body.dark-mode .info-panel .hint {
 }
 
 .settings-panel.collapsed {
-  transform: translateY(-50%) translateX(-200px);
+  transform: translateY(calc(100% - 24px));
 }
 
 .panel-toggle {
   position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%) translateX(50%);
-  width: 32px;
-  height: 48px;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 24px;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 0 8px 8px 0;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -169,31 +167,33 @@ body.dark-mode .info-panel .hint {
 }
 
 .toggle-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: #666;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
+  transform: rotate(90deg);
 }
 
 .settings-panel.collapsed .toggle-icon {
-  transform: rotate(180deg);
+  transform: rotate(-90deg);
 }
 
 .panel-content {
-  padding: 24px 20px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
 }
 
 .panel-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #999;
-  margin-bottom: 20px;
+  display: none;
 }
 
 .setting-group {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  min-width: 160px;
 }
 
 .setting-group:last-child {
